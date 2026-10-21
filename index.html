@@ -205,8 +205,13 @@
   .entry .del{border:0;background:transparent;color:var(--muted);width:28px;height:28px;padding:0;border-radius:8px} .entry .del:hover{color:var(--danger);background:var(--danger-soft)}
 
   /* 對話框 */
-  .modal{position:fixed;inset:0;background:rgba(10,20,15,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:10;backdrop-filter:blur(3px)} .modal.open{display:flex}
-  .dialog{background:var(--card);border-radius:20px;width:100%;max-width:780px;max-height:95vh;overflow:auto;padding:22px;box-shadow:var(--shadow-lg);animation:up .2s ease;position:relative}
+  .modal{position:fixed;inset:0;background:rgba(10,20,15,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility 0s linear .3s}
+  .modal.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .25s ease,visibility 0s}
+  .dialog{background:var(--card);border-radius:20px;width:100%;max-width:780px;max-height:95vh;overflow:auto;padding:22px;box-shadow:var(--shadow-lg);position:relative;transform:translateY(22px) scale(.97);opacity:0;transition:transform .38s cubic-bezier(.2,.8,.2,1),opacity .25s ease}
+  .modal.open .dialog{transform:none;opacity:1}
+  .modal.instant,.modal.instant .dialog{transition:none!important}
+  .modal.open .dialog>*{animation:fadeUp .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*35ms)} @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}}
+  .dialog .back{display:none}
   @keyframes up{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}} .dialog h2{margin:0 0 14px;font-size:18px}
   .dialog .x{position:absolute;top:14px;right:14px;width:32px;height:32px;padding:0;border-radius:50%;display:grid;place-items:center}
   .form{display:grid;grid-template-columns:1fr 1fr;gap:18px} @media (max-width:640px){.form{grid-template-columns:1fr}}
@@ -297,12 +302,58 @@
 
   /* ===== 底部抽屜式對話框（手機） ===== */
   @media (max-width:640px){
-    .modal{align-items:flex-end;padding:0}
-    .dialog{max-width:none;border-radius:22px 22px 0 0;max-height:92vh;padding:12px 18px calc(18px + env(safe-area-inset-bottom));animation:sheetUp .32s cubic-bezier(.2,.8,.2,1);touch-action:pan-y}
-    .dialog::before{content:'';display:block;width:42px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+    .modal:not(.page){align-items:flex-end;padding:0}
+    .modal:not(.page) .dialog{max-width:none;border-radius:22px 22px 0 0;max-height:92vh;padding:12px 18px calc(18px + env(safe-area-inset-bottom));touch-action:pan-y;transform:translateY(100%);opacity:1}
+    .modal:not(.page).open .dialog{transform:none}
+    .modal:not(.page) .dialog::before{content:'';display:block;width:42px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
     .dialog .x{top:10px}
   }
-  @keyframes sheetUp{from{transform:translateY(40px);opacity:0}}
+  /* ===== 手機：全螢幕推入頁面（統計／成就／目標／安裝） ===== */
+  @media (max-width:980px){
+    .modal.page{align-items:stretch;padding:0;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+    .modal.page .dialog{max-width:none;width:100%;height:100%;max-height:none;border-radius:0;padding:calc(10px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));box-shadow:-16px 0 48px -20px rgba(0,0,0,.55);transform:translateX(100%);opacity:1;transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+    .modal.page.open .dialog{transform:none}
+    .modal.page .dialog::before{display:none} .modal.page .dialog .x{display:none}
+    .modal.page .dialog .back{display:inline-flex;align-items:center;gap:2px;margin:0 0 6px -8px;font-size:15px;font-weight:600;color:var(--accent);background:none;border:0;padding:6px 8px;border-radius:10px}
+    main,.tabbar,.minibar,.fab{transition:transform .4s cubic-bezier(.2,.8,.2,1),filter .4s,opacity .3s}
+    body.has-page main{transform:scale(.95) translateX(-6%);filter:brightness(.8) saturate(.9);transform-origin:50% 30%}
+    body.has-page .tabbar,body.has-page .minibar,body.has-page .fab{transform:translateY(130%);opacity:0}
+  }
+  /* ===== 分頁切換 View Transition ===== */
+  ::view-transition-old(pane-out){animation:vtOut .28s cubic-bezier(.4,0,.7,.2) both} ::view-transition-new(pane-in){animation:vtIn .36s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes vtOut{to{opacity:0;transform:translateX(calc(var(--vt-dir,1) * -36px)) scale(.98)}} @keyframes vtIn{from{opacity:0;transform:translateX(calc(var(--vt-dir,1) * 48px)) scale(.98)}}
+  ::view-transition-group(hero){animation-duration:.46s;animation-timing-function:cubic-bezier(.2,.8,.2,1)} ::view-transition-old(hero),::view-transition-new(hero){animation:none;mix-blend-mode:normal;height:100%;object-fit:cover}
+  /* ===== 捲動浮現、數字滾輪、分頁圖示 ===== */
+  .reveal{opacity:0;transform:translateY(16px)} .reveal.in{opacity:1;transform:none;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1);transition-delay:calc(var(--d,0)*70ms)} html.no-motion .reveal{opacity:1;transform:none}
+  .odo{display:inline-flex;align-items:flex-start;height:1em;overflow:hidden;line-height:1;vertical-align:top} .odo .d{display:inline-block;height:1em;overflow:hidden} .odo .d i{display:block;font-style:normal;transition:transform .65s cubic-bezier(.2,.8,.2,1)} .odo .d i b{display:block;height:1em;line-height:1} .odo .sep{display:inline-block;height:1em;line-height:1}
+  .tb.on svg{animation:tabpop .4s cubic-bezier(.2,.8,.2,1)} @keyframes tabpop{40%{transform:translateY(-5px) scale(1.28)}100%{transform:translateY(-2px) scale(1.1)}}
+  .fab{transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .2s} .fab:active{transform:scale(.9) rotate(90deg)}
+  .minibar{animation:slideUp .35s cubic-bezier(.2,.8,.2,1)} @keyframes slideUp{from{transform:translateY(24px);opacity:0}}
+  /* ===== 首次引導 ===== */
+  #onb{position:fixed;inset:0;z-index:30;background:linear-gradient(160deg,var(--accent),var(--ring2));color:#fff;display:flex;flex-direction:column;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));overflow:auto;opacity:0;transition:opacity .45s ease}
+  #onb.show{opacity:1} #onb.instant{transition:none}
+  #onb .onb-head{display:flex;flex-direction:column;align-items:center;gap:14px;margin:4px 0 18px}
+  #onb .sl{width:76px;height:76px;border-radius:22px;background:rgba(255,255,255,.16);display:grid;place-items:center;box-shadow:0 18px 36px -16px rgba(0,0,0,.35)} #onb .sl svg{width:54px;height:54px}
+  #onb .odots{display:flex;gap:6px} #onb .odots i{width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.4);transition:width .3s,background .3s} #onb .odots i.on{width:22px;background:#fff}
+  .onb-card{background:var(--card);color:var(--text);border-radius:22px;padding:22px 20px;box-shadow:var(--shadow-lg);max-width:520px;width:100%;margin:0 auto}
+  .onb-card h2{margin:0 0 6px;font-size:22px} .onb-card .sub{color:var(--muted);font-size:13.5px;margin-bottom:14px;line-height:1.55}
+  .onb-card .fields input{font-size:17px;padding:12px}
+  .ochoice{display:grid;gap:8px;margin-top:6px} .ochoice button{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);transition:border-color .15s,background .15s,transform .15s} .ochoice button:active{transform:scale(.98)} .ochoice button .e{font-size:26px;width:34px;text-align:center} .ochoice button b{display:block;font-size:15px} .ochoice button small{color:var(--muted);font-size:12.5px;line-height:1.4;display:block} .ochoice button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px var(--accent-soft)}
+  .onb-actions{display:flex;gap:8px;margin-top:18px} .onb-actions .primary{flex:1;padding:13px;font-size:16px;border-radius:14px}
+  .onb-skip{display:block;margin:16px auto 0;color:rgba(255,255,255,.9);background:none;border:0;font-size:13.5px;text-decoration:underline;text-underline-offset:3px} .onb-skip:hover{background:none}
+  .onb-big{font-size:46px;font-weight:800;letter-spacing:-1px;text-align:center;margin:6px 0 0;font-variant-numeric:tabular-nums;line-height:1} .onb-big small{font-size:14px;color:var(--muted);font-weight:600;margin-left:6px}
+  .onb-sub{text-align:center;color:var(--muted);font-size:13px;margin:6px 0 12px}
+  .onb-feat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 4px} .onb-feat div{background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center;font-size:12px;color:var(--muted)} .onb-feat div span{display:block;font-size:24px;margin-bottom:4px}
+  ::view-transition-group(brand){animation-duration:.6s;animation-timing-function:cubic-bezier(.2,.8,.2,1)} ::view-transition-old(brand),::view-transition-new(brand){animation:none;mix-blend-mode:normal}
+  /* ===== 運動區塊 ===== */
+  .exi{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px} .exi:last-of-type{border-bottom:0} .exi .ic{font-size:20px;width:28px;text-align:center} .exi .n{flex:1;min-width:0} .exi .n div{font-weight:600} .exi .n small{color:var(--muted);font-size:11.5px;display:block} .exi b{color:var(--violet);font-variant-numeric:tabular-nums} .exi .del{border:0;background:transparent;color:var(--muted);width:26px;height:26px;padding:0;border-radius:8px} .exi .del:hover{color:var(--danger);background:var(--danger-soft)}
+  .exadd{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)} .exadd .plusk{color:var(--accent)}
+  .ebal{margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)} .ebal .row{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px} .ebal .row.small{font-size:11px;color:var(--muted);margin:6px 0 0} .ebal .row b.left{color:var(--accent)} .ebal .row b.over{color:var(--danger)}
+  .dual{position:relative;height:9px;background:var(--line);border-radius:5px;overflow:hidden} .dual i{position:absolute;left:0;top:0;height:100%;border-radius:5px;transition:width .5s} .dual .out{background:var(--violet);opacity:.35} .dual .in{background:var(--accent);z-index:1}
+  .wkgoals{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px} .wkgoals>div{font-size:11.5px;color:var(--muted)} .wkgoals span{display:block;color:var(--text);font-weight:600;margin-bottom:4px} .wkgoals .bar{height:5px;margin-bottom:3px} .wkgoals small{font-size:11px}
+  .estgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;margin-top:4px} .estc{border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--card-2);font-size:12px;display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;cursor:pointer} .estc:hover{border-color:var(--accent)} .estc span{flex:1 1 100%;color:var(--muted)} .estc b{font-size:15px;font-variant-numeric:tabular-nums} .estc small{color:var(--muted);font-size:10.5px}
+  .exlg{display:flex;gap:12px;font-size:11.5px;color:var(--muted);margin-top:4px} .exlg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+
 
   /* ===== 熱量環：漸層、光暈、液體波浪 ===== */
   .ring .face svg{position:absolute;inset:0} .ring svg.wavesvg{transform:none;z-index:0} .ring svg.mainsvg{z-index:1}
@@ -345,6 +396,10 @@
 </head>
 <body>
 <div id="splash"><div class="sl"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="11"/><circle cx="60" cy="60" r="44" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-dasharray="199 277" transform="rotate(-90 60 60)"/><rect x="42" y="49" width="36" height="7" rx="3.5" fill="#fff"/><rect x="42" y="61" width="24" height="7" rx="3.5" fill="#fff" opacity=".8"/><rect x="42" y="73" width="30" height="7" rx="3.5" fill="#fff" opacity=".6"/></svg></div><b>每日營養攝取記錄</b><small>載入中…</small></div>
+<div id="onb" hidden>
+  <div class="onb-head"><div class="sl"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="11"/><circle cx="60" cy="60" r="44" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-dasharray="199 277" transform="rotate(-90 60 60)"/><rect x="42" y="49" width="36" height="7" rx="3.5" fill="#fff"/><rect x="42" y="61" width="24" height="7" rx="3.5" fill="#fff" opacity=".8"/><rect x="42" y="73" width="30" height="7" rx="3.5" fill="#fff" opacity=".6"/></svg></div><div class="odots" id="onbDots"></div></div>
+  <div id="onbBody"></div>
+</div>
 <div class="aurora" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset="1" style="stop-color:var(--ring2)"/></linearGradient><clipPath id="ringClip"><circle cx="60" cy="60" r="46"/></clipPath></defs></svg>
 <header>
@@ -363,6 +418,7 @@
         <button data-x="csv-detail">CSV 逐筆明細（近 90 天）</button>
         <button data-x="csv-daily">CSV 每日彙總（近 90 天）</button>
         <button data-x="csv-all">CSV 逐筆明細（全部）</button>
+        <button data-x="csv-ex">CSV 運動明細（全部）</button>
       </div>
       <button id="btnImport" title="匯入備份">⬆ <span>匯入</span></button>
       <button id="btnTheme" title="主題">🌗</button>
@@ -410,7 +466,7 @@
     </div>
     <div class="card-b" id="todayPane">
       <div class="goalbar none" id="goalbar"></div>
-      <div class="exrow" id="exrow"></div>
+      <div class="sec ex" id="secEx"><h3><span>今日運動</span><span class="r" id="exSub"></span><span class="car">▼</span></h3><div class="sb" id="exBox"></div></div>
       <div class="streak" id="streak"></div>
       <div class="sec" id="secSuggest"><h3><span>建議下一份</span><span class="car">▼</span></h3><div class="sb"><div class="suggest chips" id="suggest"></div></div></div>
       <div class="quests" id="quests"></div>
@@ -480,7 +536,8 @@
 </div></div>
 
 <!-- 個人資料與目標 -->
-<div class="modal" id="targetModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:580px">
+<div class="modal page" id="targetModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:580px">
+  <button class="back" data-close>‹ 返回</button>
   <h2>個人資料與每日目標</h2>
   <div class="tabs"><button class="on" data-tab="auto">個人資料計算</button><button data-tab="manual">手動設定</button><button data-tab="data">資料備份</button><button data-tab="look">外觀</button></div>
   <div id="paneAuto" class="fields">
@@ -499,16 +556,16 @@
 </div></div>
 
 <!-- 統計 -->
-<div class="modal" id="statsModal"><div class="dialog" role="dialog" aria-modal="true">
-  <button class="x ghost" data-close>✕</button>
+<div class="modal page" id="statsModal"><div class="dialog" role="dialog" aria-modal="true">
+  <button class="back" data-close>‹ 返回</button><button class="x ghost" data-close>✕</button>
   <h2>統計分析</h2>
-  <div class="tabs" id="statsTabs"><button data-tab="calendar">月曆熱力圖</button><button data-tab="trend">趨勢折線</button><button data-tab="rank">食物排行</button><button data-tab="balance">熱量盈虧</button><button data-tab="week">週報</button></div>
+  <div class="tabs" id="statsTabs"><button data-tab="calendar">月曆熱力圖</button><button data-tab="trend">趨勢折線</button><button data-tab="rank">食物排行</button><button data-tab="balance">熱量盈虧</button><button data-tab="week">週報</button><button data-tab="exercise">運動</button></div>
   <div id="statsBody"></div>
 </div></div>
 
 <!-- 成就 / 等級 -->
-<div class="modal" id="gameModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:640px">
-  <button class="x ghost" data-close>✕</button>
+<div class="modal page" id="gameModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:640px">
+  <button class="back" data-close>‹ 返回</button><button class="x ghost" data-close>✕</button>
   <h2>成就與等級</h2>
   <div class="tabs" id="gameTabs"><button data-tab="badges" class="on">成就徽章</button><button data-tab="level">等級經驗</button></div>
   <div id="gameBody"></div>
@@ -527,14 +584,14 @@
 </div></div>
 
 <!-- 運動 -->
-<div class="modal" id="exModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:480px">
+<div class="modal" id="exModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:540px">
   <h2>記錄運動</h2>
-  <div class="fields">
-    <div class="row"><label>種類<select id="exType"></select></label><label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30"></label></div>
-    <label>或直接輸入手錶顯示的消耗 (kcal，選填)<input id="exKcal" type="number" min="0" step="1" placeholder="留空則依 MET 估算"></label>
-    <div class="hint" id="exPreview"></div>
-    <div id="exList" style="margin-top:10px"></div>
-  </div>
+  <div class="segc" id="exMode"><button data-v="met" class="on">依運動種類</button><button data-v="watch">手錶數值</button><button data-v="steps">步數</button></div>
+  <div class="fields" id="exFields"></div>
+  <div class="hint" id="exPreview"></div>
+  <div class="chips" id="exPresets" style="margin-top:8px"></div>
+  <div class="sec closed" id="exEst" style="margin-top:10px"><h3><span>各種運動 30 分鐘的消耗（依你的體重）</span><span class="car">▼</span></h3><div class="sb" id="exEstBox"></div></div>
+  <div id="exList" style="margin-top:10px"></div>
   <div class="dactions"><button data-close>關閉</button><button class="primary" id="exAdd">加入運動</button></div>
 </div></div>
 
@@ -546,8 +603,8 @@
 </div></div>
 
 <!-- 加到主畫面 -->
-<div class="modal" id="installModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
-  <button class="x ghost" data-close>✕</button>
+<div class="modal page" id="installModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+  <button class="back" data-close>‹ 返回</button><button class="x ghost" data-close>✕</button>
   <h2>加到主畫面，像 App 一樣使用</h2>
   <div id="installSteps"></div>
 </div></div>
@@ -646,7 +703,7 @@ function normalize(s){
   s.profile = s.profile || {sex:'M', age:'', height:'', weight:'', activity:'1.55', goal:'keep'};
   s.targetMode = s.targetMode || 'manual';
   if(!GOALS[s.profile.goal]) s.profile.goal='keep'; if(!['M','F'].includes(s.profile.sex)) s.profile.sex='M'; if(!ACT_LABEL[String(s.profile.activity)]) s.profile.activity='1.55';
-  s.ui = Object.assign({statsTab:'calendar', heatMetric:'kcal', trendRange:30, trendMetric:'kcal', rankRange:7, rankMetric:'servings', balanceRange:30, ringMode:'kcal', radarOpen:false, weightOpen:false, suggestOpen:true, cat:'all', sort:'usage'}, s.ui||{});
+  s.ui = Object.assign({statsTab:'calendar', heatMetric:'kcal', trendRange:30, trendMetric:'kcal', rankRange:7, rankMetric:'servings', balanceRange:30, ringMode:'kcal', radarOpen:false, weightOpen:false, suggestOpen:true, exOpen:true, exRange:30, cat:'all', sort:'usage'}, s.ui||{});
   s.combos = s.combos || []; s.body = s.body || {}; s.exercise = s.exercise || {};
   if(s.eatBack===undefined) s.eatBack = null; if(s.tdeeOverride===undefined) s.tdeeOverride = null;
   s.meta = Object.assign({lastBackupAt:null, backupEveryDays:7, snoozeUntil:null, entriesSinceBackup:0}, s.meta||{});
@@ -679,7 +736,13 @@ let currentDate = todayStr();
 let currentSlot = slotOfTime(Date.now());
 
 // ---------- 運動與動態目標 ----------
-const MET = [['walk','走路',3.0],['fastwalk','快走',4.3],['jog','慢跑',8.3],['run','跑步',9.8],['bike','單車',6.8],['swim','游泳',5.8],['lift','重訓（一般）',3.5,true],['liftx','重訓（高強度）',6.0,true],['hiit','HIIT',8.0,true],['yoga','瑜珈',2.5],['bball','籃球',6.5],['badminton','羽球',5.5],['rope','跳繩',11.0,true],['spin','飛輪',7.0]];
+const MET = [['walk','走路',3.0],['fastwalk','快走',4.3],['jog','慢跑',8.3],['run','跑步',9.8],['bike','單車',6.8],['swim','游泳',5.8],['lift','重訓（一般）',3.5,true],['liftx','重訓（高強度）',6.0,true],['hiit','HIIT',8.0,true],['yoga','瑜珈',2.5],['pilates','皮拉提斯／伸展',3.0],['bball','籃球',6.5],['badminton','羽球',5.5],['tennis','網球',7.3],['pingpong','桌球',4.0],['rope','跳繩',11.0,true],['spin','飛輪',7.0],['elliptical','橢圓機',5.0],['rowing','划船機',7.0,true],['stairs','爬樓梯',8.0],['hike','登山健行',6.0],['dance','舞蹈／有氧',5.0]];
+const exLabelType = k => k==='steps' ? '走路（步數）' : (METMAP[k]?.[1]||k);
+const exIconType = k => k==='steps' ? '🚶' : (METMAP[k]?.[3] ? '🏋' : '🏃');
+const exLabel = e => e.type==='steps' ? `走路 ${nf(e.steps||0)} 步` : exLabelType(e.type);
+const exIcon = e => exIconType(e.type);
+function exGross(e){ const W=+state.profile.weight||65; if(e.kcal>0) return Math.round(e.kcal); const m=METMAP[e.type]; return m ? Math.round(m[2]*3.5*W/200*e.min) : 0; }
+function exDayStats(d){ const L=state.exercise[d]||[]; let st=0,ca=0,min=0,steps=0; for(const e of L){ const n=exNet(e); if(METMAP[e.type]?.[3]) st+=n; else ca+=n; min+=e.min; steps+=e.steps||0; } return {n:L.length, st, ca, net:st+ca, min, steps}; }
 const METMAP = Object.fromEntries(MET.map(m=>[m[0],m]));
 function exNet(e){
   const W = +state.profile.weight || 65;
@@ -852,7 +915,7 @@ function renderProducts(){
       <span class="fav ${p.fav?'on':''}" title="釘選">${p.fav?'★':'☆'}</span><span class="edit" title="編輯">✎</span>`;
     b.addEventListener('click', e => {
       if(suppressClick){ suppressClick=false; return; }
-      if(e.target.classList.contains('edit')){ openModal(p); return; }
+      if(e.target.classList.contains('edit')){ heroOpen(b.querySelector('.thumb'), p); return; }
       if(e.target.classList.contains('fav')){ p.fav=!p.fav; save(); e.target.classList.add('bounce'); setTimeout(renderProducts, 250); return; }
       addEntry(p, 1, {thumbEl:b.querySelector('.thumb')});
       b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
@@ -1012,13 +1075,26 @@ function renderGoalbar(totals){
     gb.innerHTML = `<span class="gchip">${K?'手動目標':'未設定'}</span><div class="t">${leftHtml}<small>輸入年齡、身高、體重與運動頻率，換算專屬的增肌／減脂目標</small></div><button class="primary small" id="gbEdit">設定</button>`;
   }
   $('gbEdit').onclick = openTargets;
-  // 運動列
-  const list = state.exercise[currentDate]||[]; const mins=sum(list.map(e=>e.min)), net=sum(list.map(exNet)), extra=exerciseExtra(currentDate);
-  const wk = weekStart(currentDate); let strengthDays=0, cardioMin=0; for(let i=0;i<7;i++){ const d=addDays(wk,i); const L=state.exercise[d]||[]; if(L.some(e=>METMAP[e.type]?.[3])) strengthDays++; cardioMin+=sum(L.filter(e=>!METMAP[e.type]?.[3]).map(e=>e.min)); }
-  $('exrow').innerHTML = (list.length ? `🏋 今日運動 <b>${mins}</b> 分 · 淨消耗 <b>${nf(net)}</b> kcal${T('kcal')?` · 目標 <span class="plusk" id="plusk">+${nf(extra)}</span>`:''}` : `🏋 今日尚無運動`) +
-    ` <button class="ghost small" id="btnEx">＋ 運動</button>` + (list.length||strengthDays||cardioMin ? `<span style="flex-basis:100%"></span><span title="每週 2 次肌力訓練（ACSM）">肌力 ${strengthDays}/2 次${strengthDays>=2?' ✔':''}</span><span title="每週 150 分鐘中等強度有氧（WHO）">· 有氧 ${cardioMin}/150 分${cardioMin>=150?' ✔':''}</span>` : '');
-  $('btnEx').onclick = openExModal;
+  renderExercise();
 }
+
+// ---------- 今日運動區塊 ----------
+function renderExercise(){
+  const sec=$('secEx'); if(!sec) return; const list=state.exercise[currentDate]||[]; const mins=sum(list.map(e=>e.min)), net=sum(list.map(exNet)), extra=exerciseExtra(currentDate);
+  sec.classList.toggle('closed', state.ui.exOpen===false);
+  $('exSub').textContent = list.length ? `${list.length} 次 · ${mins} 分 · −${nf(net)} kcal` : '尚無記錄';
+  const wk=weekStart(currentDate); let strengthDays=0, cardioMin=0, wkNet=0; for(let i=0;i<7;i++){ const d=addDays(wk,i); const L=state.exercise[d]||[]; if(L.some(e=>METMAP[e.type]?.[3])) strengthDays++; cardioMin+=sum(L.filter(e=>!METMAP[e.type]?.[3]).map(e=>e.min)); wkNet+=sum(L.map(exNet)); }
+  const c=calcProfile(state.profile); const t=dayTotals(currentDate);
+  let html = list.map(e=>`<div class="exi"><span class="ic">${exIcon(e)}</span><div class="n"><div>${exLabel(e)}</div><small>${e.min} 分 · 總消耗 ${nf(exGross(e))}${e.kcal&&e.type!=='steps'?'（手錶）':''} · 扣基礎代謝後 ${nf(exNet(e))} kcal</small></div><b>−${nf(exNet(e))}</b><button class="del" data-id="${e.id}" title="移除">✕</button></div>`).join('');
+  html += `<div class="exadd"><button class="chip" id="btnEx">＋ 記錄運動</button>${T('kcal')&&list.length?`<span>回補 ${Math.round(eatBackRatio()*100)}% → 今日目標 <b class="plusk" id="plusk">+${nf(extra)}</b> kcal</span>`:(list.length?'':'<span>走路、重訓、球類都能估算消耗</span>')}</div>`;
+  if(c){ const burn=c.tdee+net; const mx=Math.max(burn,t.kcal,1); const bal=t.kcal-burn;
+    html += `<div class="ebal"><div class="row"><span>攝取 <b data-tw="ebin">${nf(t.kcal)}</b> kcal</span><span>消耗估計 <b>${nf(burn)}</b> kcal</span></div><div class="dual"><i class="out" style="width:${Math.round(burn/mx*100)}%"></i><i class="in" style="width:${Math.round(t.kcal/mx*100)}%"></i></div><div class="row small"><span>基礎代謝 ${nf(c.bmr)} · 日常活動 +${nf(c.tdee-c.bmr)} · 運動 +${nf(net)}</span><b class="${bal>0?'over':'left'}">${bal>0?'盈餘 +':'赤字 −'}${nf(Math.abs(bal))}</b></div></div>`; }
+  html += `<div class="wkgoals"><div><span>肌力訓練 ${strengthDays>=2?'✔':''}</span><div class="bar"><i style="width:${Math.min(100,strengthDays/2*100)}%;background:var(--violet)"></i></div><small>本週 ${strengthDays} / 2 次（ACSM 建議）</small></div><div><span>有氧 ${cardioMin>=150?'✔':''}</span><div class="bar"><i style="width:${Math.min(100,cardioMin/150*100)}%"></i></div><small>本週 ${cardioMin} / 150 分（WHO 建議）· 淨消耗 ${nf(wkNet)} kcal</small></div></div>`;
+  $('exBox').innerHTML = html;
+  $('btnEx').onclick = openExModal;
+  $('exBox').querySelectorAll('.del').forEach(b=>b.onclick=()=>{ const date=currentDate; const snap=JSON.stringify(state.exercise[date]||[]); const e=list.find(x=>x.id===b.dataset.id); state.exercise[date]=list.filter(x=>x.id!==b.dataset.id); if(!state.exercise[date].length) delete state.exercise[date]; save(); pushUndo('刪除運動', date, ()=>{ state.exercise[date]=JSON.parse(snap); }); renderToday(); toast(`已移除運動：${e?exLabel(e):''}`,{undo:true}); feedback('del'); });
+}
+$('secEx').querySelector('h3').onclick=()=>{ state.ui.exOpen = state.ui.exOpen===false; save(); $('secEx').classList.toggle('closed', !state.ui.exOpen); };
 
 // ---------- 連續達標 ----------
 function streaks(){
@@ -1080,6 +1156,8 @@ const QUESTS = [
   {id:'trans0', name:'零反式脂肪', test:ev=>[ev.t.transfat,0, ev.logged&&ev.t.transfat===0], unit:'g'},
   {id:'first10', name:'10:00 前吃第一餐', test:ev=>{ const ts=ev.log.flatMap(e=>e.times||[e.t]).filter(t=>dstr(new Date(t))===ev.date); const m=ts.length?Math.min(...ts):null; return [m?new Date(m).toTimeString().slice(0,5):'—', '10:00', !!m&&new Date(m).getHours()<10]; }, text:true},
   {id:'newFood', name:'嘗試 14 天沒吃的食物', test:ev=>{ const from=addDays(ev.date,-14); const recent=new Set(); for(const d in state.logs) if(d>=from&&d<ev.date) state.logs[d].forEach(e=>recent.add(e.pid)); const n=ev.log.filter(e=>!recent.has(e.pid)).length; return [n,1,n>=1]; }},
+  {id:'move30', name:'運動 30 分鐘以上', test:ev=>{ const m=sum((state.exercise[ev.date]||[]).map(e=>e.min)); return [m,30,m>=30]; }, unit:'分'},
+  {id:'strength1', name:'做一次肌力訓練', test:ev=>{ const n=(state.exercise[ev.date]||[]).filter(e=>METMAP[e.type]?.[3]).length; return [n,1,n>=1]; }},
   {id:'bulk95', name:'熱量達 95% 以上', goals:['bulk'], need:'kcal', test:ev=>[ev.t.kcal, ev.K*.95, ev.t.kcal>=ev.K*.95], unit:'kcal'},
   {id:'cutUnder', name:'熱量不超標', goals:['cut'], need:'kcal', test:ev=>[ev.t.kcal, ev.K, ev.logged&&ev.t.kcal<=ev.K], unit:'kcal'},
 ];
@@ -1107,7 +1185,7 @@ function renderRing(totals){
     if(!face.querySelector('#ringVal')) face.innerHTML = `<svg class="wavesvg" viewBox="0 0 120 120"><g clip-path="url(#ringClip)"><g id="waveG" style="transform:translateY(106px)"><path class="wave w1" d="M0,6 Q15,0 30,6 T60,6 T90,6 T120,6 T150,6 T180,6 T210,6 T240,6 L240,140 L0,140 Z"/><path class="wave w2" d="M0,6 Q15,0 30,6 T60,6 T90,6 T120,6 T150,6 T180,6 T210,6 T240,6 L240,140 L0,140 Z" style="transform:translateX(-30px)"/></g></g></svg><svg class="mainsvg" viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="val" id="ringVal" cx="60" cy="60" r="52" stroke-dasharray="0 ${CIRC}"/></svg><div class="center"><b id="ringKcal">0</b><span id="ringSub">kcal</span></div>`;
     const ring=$('ringVal'); requestAnimationFrame(()=>ring.setAttribute('stroke-dasharray', `${Math.min(kp,100)/100*CIRC} ${CIRC}`)); ring.classList.toggle('over', kp>100); ring.classList.toggle('glow', kp>0); $('ringBox').classList.toggle('over', kp>100);
     const wg=$('waveG'); if(wg) setTimeout(()=>{ wg.style.transform=`translateY(${(106-92*Math.min(1,kp/100)).toFixed(1)}px)`; }, 30);
-    tween($('ringKcal'), prevTotals?prevTotals.kcal:0, totals.kcal, num);
+    odometer($('ringKcal'), totals.kcal);
     const extra=K-T('kcal'); $('ringSub').innerHTML = K ? `/ ${nf(K)}${extra>0?` <span style="color:var(--accent)">(+${nf(extra)})</span>`:''} kcal · ${Math.round(kp)}%` : 'kcal';
   }else{
     const pk=totals.protein*4, fk=totals.fat*9, ck=totals.carb*4, S=pk+fk+ck;
@@ -1369,32 +1447,34 @@ function openStats(tab){ if(tab) state.ui.statsTab=tab; calMonth = currentDate.s
 $('btnStats').onclick = () => openStats();
 $('statsTabs').querySelectorAll('button').forEach(b => b.onclick = () => { state.ui.statsTab = b.dataset.tab; save(); renderStats(); });
 function segHTML(id, opts, cur){ return `<span class="segs" id="${id}">${opts.map(([v,l])=>`<button data-v="${v}" class="${String(cur)===String(v)?'on':''}">${l}</button>`).join('')}</span>`; }
+const kpiBox=(l,v,s)=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}${s?`<small> ${s}</small>`:''}</div></div>`;
 function bindSeg(id, fn){ $(id).querySelectorAll('button').forEach(b=>b.onclick=()=>fn(b.dataset.v)); }
 function renderStats(){
   evalCache = new Map();
   $('statsTabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.tab===state.ui.statsTab));
   const body=$('statsBody'); body.innerHTML='';
-  ({calendar:renderCalendar, trend:renderTrendLine, rank:renderRank, balance:renderBalance, week:renderWeek}[state.ui.statsTab]||renderCalendar)(body);
+  ({calendar:renderCalendar, trend:renderTrendLine, rank:renderRank, balance:renderBalance, week:renderWeek, exercise:renderExerciseStats}[state.ui.statsTab]||renderCalendar)(body);
 }
 
 // ---------- 月曆熱力圖 ----------
 function renderCalendar(body){
   const [y,m]=calMonth.split('-').map(Number); const first=new Date(y,m-1,1), days=new Date(y,m,0).getDate(); const startWd=first.getDay(); const rows=Math.ceil((startWd+days)/7);
-  const metric=state.ui.heatMetric, td=todayStr(); const Tm=metric==='kcal'?null:T(metric);
-  let cells='', logged=0, hitN=0, best=0, run=0;
+  const metric=state.ui.heatMetric, td=todayStr(); const isEx=metric==='exercise'; const Tm=(metric==='kcal'||isEx)?null:T(metric);
+  let cells='', logged=0, hitN=0, best=0, run=0, exMin=0, exNet=0;
   for(let i=0;i<days;i++){ const d=dstr(new Date(y,m-1,i+1)); const idx=startWd+i, col=idx%7, row=Math.floor(idx/7); const x=col*36+2, yy=28+row*36;
     const ev=evalDay(d); const K=metric==='kcal'?ev.K:Tm; const v=ev.t[metric]; const r=K>0?v/K:0; let fill='var(--line)', op=.5, tipTxt;
     if(d>td){ op=.25; tipTxt='未來'; }
+    else if(isEx){ const es=exDayStats(d); if(!es.n){ tipTxt='無運動'; } else { logged++; exMin+=es.min; exNet+=es.net; fill='var(--violet)'; op=es.net<150?.35:es.net<300?.6:es.net<500?.8:1; tipTxt=`運動 ${es.min} 分 · −${nf(es.net)} kcal`; } }
     else if(!ev.logged){ tipTxt='無記錄'; run=0; }
     else { logged++; if(ev.hit){ hitN++; run++; best=Math.max(best,run); } else run=0;
       if(!K){ fill='var(--muted)'; op=.4; } else if(metric==='kcal'){ if(r<.7){fill='var(--accent)';op=.3;} else if(r<.9){fill='var(--accent)';op=.55;} else if(r<=1.1){fill='var(--accent)';op=1;} else if(r<=1.25){fill='var(--amber)';op=1;} else {fill='var(--danger)';op=1;} }
       else if(metric==='protein'){ fill='var(--accent)'; op=r>=1?1:r>=.75?.6:.3; } else { if(r<=1){fill='var(--accent)';op=1;} else if(r<=1.3){fill='var(--amber)';op=1;} else {fill='var(--danger)';op=1;} }
       tipTxt=`${fmt(v,NUT[metric].unit)}${K?` · ${Math.round(r*100)}%`:''}${ev.hit?' · 達標':''}`; }
     cells+=`<rect class="d" x="${x}" y="${yy}" width="32" height="32" rx="6" fill="${fill}" fill-opacity="${op}" ${d===td?'stroke="var(--text)" stroke-width="1.5"':''} data-d="${d}" data-tip="${mdw(d)} · ${tipTxt}" style="${RM.matches?'':`opacity:0;animation:fadein .3s ease ${i*8}ms forwards`}"/><text x="${x+4}" y="${yy+11}" style="font-size:9px;fill:${op>=.9&&fill!=='var(--line)'?'#fff':'var(--muted)'}">${i+1}</text>`; }
-  body.innerHTML = `<div class="sbar"><button class="small" id="calPrev">‹</button><b>${y} 年 ${m} 月</b><button class="small" id="calNext">›</button><span class="sp"></span>${segHTML('heatSeg',[['kcal','熱量'],['protein','蛋白質'],['sodium','鈉']],metric)}</div>
+  body.innerHTML = `<div class="sbar"><button class="small" id="calPrev">‹</button><b>${y} 年 ${m} 月</b><button class="small" id="calNext">›</button><span class="sp"></span>${segHTML('heatSeg',[['kcal','熱量'],['protein','蛋白質'],['sodium','鈉'],['exercise','運動']],metric)}</div>
     <div class="cal"><svg class="chart" viewBox="0 0 252 ${28+rows*36}" style="max-width:420px;margin:0 auto">${WEEK.map((w,i)=>`<text class="ax" x="${i*36+18}" y="16" text-anchor="middle">${w}</text>`).join('')}${cells}</svg>
-    <div class="lg">${metric==='kcal'?`<span><i style="background:var(--accent);opacity:.3"></i>&lt;70%</span><span><i style="background:var(--accent);opacity:.55"></i>70–90%</span><span><i style="background:var(--accent)"></i>90–110%</span><span><i style="background:var(--amber)"></i>110–125%</span><span><i style="background:var(--danger)"></i>&gt;125%</span>`:metric==='protein'?`<span><i style="background:var(--accent);opacity:.3"></i>&lt;75%</span><span><i style="background:var(--accent);opacity:.6"></i>75–100%</span><span><i style="background:var(--accent)"></i>≥100%</span>`:`<span><i style="background:var(--accent)"></i>≤上限</span><span><i style="background:var(--amber)"></i>100–130%</span><span><i style="background:var(--danger)"></i>&gt;130%</span>`}<span><i style="background:var(--line)"></i>無記錄</span></div>
-    <div class="insight">本月有記錄 ${logged} 天 · 達標 ${hitN} 天 · 最長連續達標 ${best} 天${!T('kcal')?'（請先設定目標）':''}。點任一格可跳到該日。</div></div>`;
+    <div class="lg">${isEx?`<span><i style="background:var(--violet);opacity:.35"></i>&lt;150</span><span><i style="background:var(--violet);opacity:.6"></i>150–300</span><span><i style="background:var(--violet);opacity:.8"></i>300–500</span><span><i style="background:var(--violet)"></i>&gt;500 kcal</span>`:metric==='kcal'?`<span><i style="background:var(--accent);opacity:.3"></i>&lt;70%</span><span><i style="background:var(--accent);opacity:.55"></i>70–90%</span><span><i style="background:var(--accent)"></i>90–110%</span><span><i style="background:var(--amber)"></i>110–125%</span><span><i style="background:var(--danger)"></i>&gt;125%</span>`:metric==='protein'?`<span><i style="background:var(--accent);opacity:.3"></i>&lt;75%</span><span><i style="background:var(--accent);opacity:.6"></i>75–100%</span><span><i style="background:var(--accent)"></i>≥100%</span>`:`<span><i style="background:var(--accent)"></i>≤上限</span><span><i style="background:var(--amber)"></i>100–130%</span><span><i style="background:var(--danger)"></i>&gt;130%</span>`}<span><i style="background:var(--line)"></i>無記錄</span></div>
+    <div class="insight">${isEx?`本月運動 ${logged} 天 · 共 ${exMin} 分 · 淨消耗 ${nf(exNet)} kcal`:`本月有記錄 ${logged} 天 · 達標 ${hitN} 天 · 最長連續達標 ${best} 天${!T('kcal')?'（請先設定目標）':''}`}。點任一格可跳到該日。</div></div>`;
   $('calPrev').onclick=()=>{ calMonth=dstr(new Date(y,m-2,1)).slice(0,7); renderStats(); }; $('calNext').onclick=()=>{ calMonth=dstr(new Date(y,m,1)).slice(0,7); renderStats(); };
   bindSeg('heatSeg', v=>{ state.ui.heatMetric=v; save(); renderStats(); });
   body.querySelectorAll('rect.d').forEach(r=>r.onclick=()=>{ $('statsModal').classList.remove('open'); goDate(r.dataset.d); });
@@ -1403,8 +1483,8 @@ function renderCalendar(body){
 // ---------- 趨勢折線 ----------
 function catmull(pts){ if(pts.length<2) return ''; let d=`M${pts[0][0]},${pts[0][1]}`; for(let i=0;i<pts.length-1;i++){ const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2; d+=` C${(p1[0]+(p2[0]-p0[0])/6).toFixed(1)},${(p1[1]+(p2[1]-p0[1])/6).toFixed(1)} ${(p2[0]-(p3[0]-p1[0])/6).toFixed(1)},${(p2[1]-(p3[1]-p1[1])/6).toFixed(1)} ${p2[0]},${p2[1]}`; } return d; }
 function renderTrendLine(body){
-  const N=+state.ui.trendRange, metric=state.ui.trendMetric, n=NUT[metric]; const days=[]; for(let i=N-1;i>=0;i--) days.push(addDays(currentDate,-i));
-  const vals=days.map(d=>dayTotals(d)[metric]), logged=days.map(d=>(state.logs[d]||[]).length>0), Ts=days.map(d=>metric==='kcal'?kcalTargetFor(d):T(metric));
+  const N=+state.ui.trendRange, metric=state.ui.trendMetric; const isEx=metric==='exercise'; const n=isEx?{label:'運動消耗',unit:'kcal'}:NUT[metric]; const days=[]; for(let i=N-1;i>=0;i--) days.push(addDays(currentDate,-i));
+  const vals=days.map(d=>isEx?exDayStats(d).net:dayTotals(d)[metric]), logged=days.map(d=>isEx?!!(state.exercise[d]||[]).length:(state.logs[d]||[]).length>0), Ts=days.map(d=>isEx?0:(metric==='kcal'?kcalTargetFor(d):T(metric)));
   const Tm=Ts[Ts.length-1]; const ma=vals.map((v,i)=>{ const w=[]; for(let j=i;j>=0&&w.length<7;j--) if(logged[j]) w.push(vals[j]); return w.length>=3?sum(w)/w.length:null; });
   const yMax=Math.max(Tm*1.25,...vals,1)*1.05; const x=i=>34+i*320/(N-1), y=v=>12+126*(1-v/yMax);
   let path='', prev=false; vals.forEach((v,i)=>{ if(!logged[i]){ prev=false; return; } path+=`${prev?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)} `; prev=true; });
@@ -1414,8 +1494,8 @@ function renderTrendLine(body){
   const band=Tm>0?`<rect x="34" y="${y(Tm*1.1).toFixed(1)}" width="320" height="${(y(Tm*.9)-y(Tm*1.1)).toFixed(1)}" fill="var(--accent-soft)"/><line class="tgtl" x1="34" x2="354" y1="${y(Tm).toFixed(1)}" y2="${y(Tm).toFixed(1)}"/>`:'';
   const dots=vals.map((v,i)=>logged[i]&&(N<90||(Tm&&v>Tm))?`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${N>=90?2:3}" fill="${Tm&&v>Tm&&UPPER.has(metric)?'var(--danger)':'var(--accent)'}" data-tip="${mdw(days[i])} · ${fmt(v,n.unit)}${Ts[i]?` · ${Math.round(v/Ts[i]*100)}%`:''}${ma[i]!==null?` · 7 日均 ${num(ma[i])}`:''}"/>`:'').join('');
   const lg=vals.filter((v,i)=>logged[i]); const hitN=days.filter((d,i)=>logged[i]&&Ts[i]&&(UPPER.has(metric)?vals[i]<=Ts[i]:vals[i]>=Ts[i]*.9)).length;
-  body.innerHTML=`<div class="sbar">${segHTML('trSeg',[[14,'14 日'],[30,'30 日'],[90,'90 日']],N)}<span class="sp"></span><select class="sel" id="trMetric">${['kcal','protein','carb','fat','sugar','sodium'].map(k=>`<option value="${k}" ${k===metric?'selected':''}>${NUT[k].label}</option>`).join('')}</select></div>
-    <svg class="chart" viewBox="0 0 360 160">${band}${gridLines}<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5" class="${RM.matches?'':'drawline'}" style="--len:1200"/>${maPts.length>1?`<path d="${catmull(maPts)}" fill="none" stroke="var(--text)" stroke-opacity=".55" stroke-width="3" class="${RM.matches?'':'drawline'}" style="--len:1200"/>`:''}${dots}${ticks}</svg>
+  body.innerHTML=`<div class="sbar">${segHTML('trSeg',[[14,'14 日'],[30,'30 日'],[90,'90 日']],N)}<span class="sp"></span><select class="sel" id="trMetric">${['kcal','protein','carb','fat','sugar','sodium','exercise'].map(k=>`<option value="${k}" ${k===metric?'selected':''}>${k==='exercise'?'運動消耗':NUT[k].label}</option>`).join('')}</select></div>
+    <svg class="chart" viewBox="0 0 360 160">${band}${gridLines}<path d="${path}" fill="none" stroke="${isEx?'var(--violet)':'var(--accent)'}" stroke-width="1.5" class="${RM.matches?'':'drawline'}" style="--len:1200"/>${maPts.length>1?`<path d="${catmull(maPts)}" fill="none" stroke="var(--text)" stroke-opacity=".55" stroke-width="3" class="${RM.matches?'':'drawline'}" style="--len:1200"/>`:''}${dots}${ticks}</svg>
     <div class="legend" style="padding:8px 0 0"><span style="color:var(--accent)">━ 每日</span><span style="color:var(--muted)">━ 7 日移動平均</span>${Tm?`<span style="color:var(--muted)">▮ 目標 ±10%</span>`:''}</div>
     <div class="insight">${lg.length?`區間平均 ${fmt(sum(lg)/lg.length,n.unit)} · 最高 ${fmt(Math.max(...lg),n.unit)} · 最低 ${fmt(Math.min(...lg),n.unit)}${Tm?` · ${UPPER.has(metric)?'未超標':'達標'} ${hitN}/${lg.length} 個記錄日`:''}`:'此區間沒有記錄'}</div>`;
   bindSeg('trSeg', v=>{ state.ui.trendRange=+v; save(); renderStats(); }); $('trMetric').onchange=e=>{ state.ui.trendMetric=e.target.value; save(); renderStats(); };
@@ -1441,18 +1521,18 @@ function renderBalance(body){
   const N=+state.ui.balanceRange; const c=calcProfile(state.profile); const baseline=c?c.tdee:T('kcal'); const g=goalKey();
   if(!baseline){ body.innerHTML='<div class="empty">請先設定目標或個人資料</div>'; return; }
   const days=[]; for(let i=N-1;i>=0;i--) days.push(addDays(currentDate,-i));
-  const deltas=days.map(d=>{ const ev=evalDay(d); return ev.logged?ev.t.kcal-baseline:null; }); const lg=deltas.filter(v=>v!==null);
+  const extraOf=d=>T('kcal')?kcalTargetFor(d)-T('kcal'):0; const deltas=days.map(d=>{ const ev=evalDay(d); return ev.logged?ev.t.kcal-(baseline+extraOf(d)):null; }); const lg=deltas.filter(v=>v!==null); const exSum=sum(days.map(d=>exDayStats(d).net));
   const yMax=Math.max(...lg.map(Math.abs), baseline*.25); const W=360, zero=100, bw=Math.max(3,(W-40)/N-2); const x=i=>36+i*((W-40)/N), h=v=>Math.abs(v)/yMax*70;
   let cum=0; const cumPts=[]; let bars='';
   days.forEach((d,i)=>{ const v=deltas[i]; if(v===null){ bars+=`<rect x="${x(i)}" y="30" width="${bw}" height="140" fill="url(#hatch)" opacity=".5" data-tip="${mdw(d)} · 無記錄"/>`; return; } cum+=v; cumPts.push([x(i)+bw/2, 100-cum/(yMax*N/3)*70]);
     const surplus=v>0; let col; if(g==='cut') col=surplus?'var(--danger)':'var(--accent)'; else if(g==='bulk') col=surplus?'var(--accent)':'var(--danger)'; else col=Math.abs(v)/baseline<=.15?'var(--accent)':'var(--amber)';
-    bars+=`<rect x="${x(i)}" y="${surplus?zero-h(v):zero}" width="${bw}" height="${Math.max(1,h(v))}" fill="${col}" rx="1.5" data-tip="${mdw(d)} · ${v>0?'+':''}${nf(v)} kcal（攝取 ${nf(v+baseline)}）" style="transform-box:fill-box;transform-origin:${surplus?'bottom':'top'};${RM.matches?'':`transform:scaleY(0);animation:grow .4s ease ${i*12}ms forwards`}"/>`; });
+    bars+=`<rect x="${x(i)}" y="${surplus?zero-h(v):zero}" width="${bw}" height="${Math.max(1,h(v))}" fill="${col}" rx="1.5" data-tip="${mdw(d)} · ${v>0?'+':''}${nf(v)} kcal（攝取 ${nf(v+baseline+extraOf(d))}${extraOf(d)?` · 運動回補 +${nf(extraOf(d))}`:''}）" style="transform-box:fill-box;transform-origin:${surplus?'bottom':'top'};${RM.matches?'':`transform:scaleY(0);animation:grow .4s ease ${i*12}ms forwards`}"/>`; });
   const cumMax=Math.max(...cumPts.map(p=>Math.abs(100-p[1])),1); const cumPath=cumPts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${(100-(100-p[1])*Math.min(1,60/cumMax)).toFixed(1)}`).join(' ');
   const avg=lg.length?cum/lg.length:0; const daysLeft=new Date(+currentDate.slice(0,4), +currentDate.slice(5,7), 0).getDate()-parseD(currentDate).getDate();
-  body.innerHTML=`<style>@keyframes grow{to{transform:scaleY(1)}}</style><div class="sbar">${segHTML('blR',[[14,'14 日'],[30,'30 日']],N)}<span class="chip">基準：${c?'TDEE':'目標'} ${nf(baseline)} kcal</span></div>
+  body.innerHTML=`<style>@keyframes grow{to{transform:scaleY(1)}}</style><div class="sbar">${segHTML('blR',[[14,'14 日'],[30,'30 日']],N)}<span class="chip">基準：${c?'TDEE':'目標'} ${nf(baseline)} kcal</span>${exSum?`<span class="chip">區間運動淨消耗 ${nf(exSum)} kcal</span>`:''}</div>
     <svg class="chart" viewBox="0 0 360 180"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--line)" stroke-width="2"/></pattern></defs><line class="gridl" x1="36" x2="356" y1="100" y2="100" style="stroke:var(--muted)"/><text class="ax" x="32" y="34" text-anchor="end">+${nf(yMax)}</text><text class="ax" x="32" y="174" text-anchor="end">−${nf(yMax)}</text><text class="ax" x="32" y="103" text-anchor="end">0</text>${bars}${cumPts.length>1?`<path d="${cumPath}" fill="none" stroke="var(--text)" stroke-opacity=".6" stroke-width="2" class="${RM.matches?'':'drawline'}" style="--len:800"/>`:''}</svg>
     <div class="kpis"><div class="kpi"><div class="l">累積盈虧</div><div class="v">${cum>0?'+':''}${nf(cum)}<small> kcal</small></div></div><div class="kpi"><div class="l">約等於體脂</div><div class="v">${lg.length>=3?`${cum>0?'+':''}${(cum/7700).toFixed(1)}<small> kg</small>`:'—'}</div></div><div class="kpi"><div class="l">日均差額</div><div class="v">${avg>0?'+':''}${nf(avg)}<small> kcal</small></div></div><div class="kpi"><div class="l">月底外推</div><div class="v">${lg.length>=3?`${(cum+avg*daysLeft)>0?'+':''}${nf(cum+avg*daysLeft)}<small> kcal</small>`:'—'}</div></div></div>
-    <div class="hint">向上為盈餘、向下為赤字；斜紋為無記錄日。深色線為累積值。7,700 kcal ≈ 1 kg 體脂僅為粗估，實際變化受水分、肌肉與代謝適應影響。</div>`;
+    <div class="hint">向上為盈餘、向下為赤字；斜紋為無記錄日。深色線為累積值。有記錄運動的日子，基準會加上回補的運動消耗。7,700 kcal ≈ 1 kg 體脂僅為粗估，實際變化受水分、肌肉與代謝適應影響。</div>`;
   bindSeg('blR', v=>{ state.ui.balanceRange=+v; save(); renderStats(); });
 }
 
@@ -1469,6 +1549,7 @@ function renderWeek(body){
   body.innerHTML=`<div class="sbar"><button class="small" id="wkPrev" ${first&&addDays(mon,-7)<weekStart(first)?'disabled':''}>‹</button><b>${mdw(mon)} – ${mdw(sun)}</b><button class="small" id="wkNext" ${addDays(mon,7)>todayStr()?'disabled':''}>›</button><span class="sp"></span><button class="small" id="wkSvg">下載 SVG</button></div>
     <div class="kpis">${kpi('記錄天數',ws.logDays,'/ 7')}${kpi('達標天數',ws.hitDays,'/ 7')}${kpi('平均熱量',nf(ws.avg('kcal')),`<span class="${dK>0?'dn':'up'}">${dK>0?'▲':'▼'}${nf(Math.abs(dK))}</span> vs 目標`)}${kpi('蛋白質達標',ws.proDays,'天')}</div>
     <div class="dots" style="justify-content:space-around;margin:4px 0 12px">${ws.days.map((d,i)=>{ const e=ws.evs[i]; return `<span style="text-align:center;font-size:11px;color:var(--muted)"><i class="${e.hit?'hit':e.logged?'log':''}" style="display:block;margin:0 auto 3px;width:14px;height:14px;border-radius:50%;border:2px solid var(--line);${e.hit?'background:var(--accent);border-color:var(--accent)':e.logged?'border-color:var(--amber);background:linear-gradient(180deg,var(--amber) 50%,transparent 50%)':''}"></i>${WEEK[(i+1)%7]}</span>`; }).join('')}</div>
+    ${(()=>{ const ex=ws.days.map(exDayStats); const n=ex.filter(x=>x.n).length; return n?`<div class="hint" style="margin:-4px 0 10px">🏋 本週運動 ${n} 天 · ${sum(ex.map(x=>x.min))} 分 · 淨消耗 ${nf(sum(ex.map(x=>x.net)))} kcal · 肌力 ${sum(ws.days.map(d=>(state.exercise[d]||[]).filter(e=>METMAP[e.type]?.[3]).length))} 次</div>`:''; })()}
     <svg class="chart" id="wkSvgEl" viewBox="0 0 560 ${NUTRIENTS.filter(n=>T(n.key)>0).length*34+4}">${rows}</svg>
     <div class="hint">實心條 = 本週有記錄日平均；直線 = 目標；◇ = 上週平均。達成型（蛋白質、碳水、脂肪）越接近目標越好；上限型（熱量、飽脂、糖、鈉）超過直線進入紅區。</div>
     ${ws.top.length?`<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">${ws.top.map(([pid,q])=>{ const p=prod(pid); return `<div class="sg" style="cursor:default">${p?thumbHTML(p,'th'):'<div class="th">🍱</div>'}<div class="n"><div>${esc(p?.name||'已刪除')}</div><small>${q.toFixed(1)} 份</small></div></div>`; }).join('')}</div>`:''}
@@ -1476,6 +1557,34 @@ function renderWeek(body){
   requestAnimationFrame(()=>body.querySelectorAll('.bul').forEach((r,i)=>{ if(RM.matches) r.setAttribute('width',r.dataset.w); else r.animate([{width:0},{width:r.dataset.w}],{duration:500,delay:i*40,fill:'forwards',easing:'ease-out'}); }));
   $('wkPrev').onclick=()=>{ weekCursor=addDays(mon,-7); renderStats(); }; $('wkNext').onclick=()=>{ weekCursor=addDays(mon,7); renderStats(); };
   $('wkSvg').onclick=()=>{ const svg=$('wkSvgEl').cloneNode(true); svg.querySelectorAll('.bul').forEach(r=>r.setAttribute('width',r.dataset.w)); let s=svg.outerHTML.replace(/var\((--[\w-]+)\)/g,(m,v)=>cssVar(v)||'#999'); s=s.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif;background:'+cssVar('--card')+'"'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([s],{type:'image/svg+xml'})); a.download=`週報_${mon}.svg`; a.click(); URL.revokeObjectURL(a.href); };
+}
+// ---------- 運動統計 ----------
+function renderExerciseStats(body){
+  const N=+state.ui.exRange||30; const days=[]; for(let i=N-1;i>=0;i--) days.push(addDays(currentDate,-i));
+  const ds=days.map(exDayStats); const active=ds.filter(x=>x.n); const totNet=sum(ds.map(x=>x.net)), totMin=sum(ds.map(x=>x.min)), totSteps=sum(ds.map(x=>x.steps));
+  const strengthN=sum(days.map(d=>(state.exercise[d]||[]).filter(e=>METMAP[e.type]?.[3]).length));
+  const max=Math.max(...ds.map(x=>x.net),100)*1.1; const W=360,H=150,top=12,bottom=18; const bw=Math.max(3,(W-40)/N-2); const x=i=>36+i*((W-40)/N); const y=v=>top+(H-top-bottom)*(1-v/max);
+  let bars=''; ds.forEach((s,i)=>{ if(!s.n) return; const yS=y(s.st), hS=H-bottom-yS; const yC=y(s.st+s.ca), hC=yS-yC; const anim=RM.matches?'':`transform:scaleY(0);animation:grow .45s ease ${i*12}ms forwards;transform-box:fill-box;transform-origin:bottom`;
+    if(hS>0) bars+=`<rect x="${x(i)}" y="${yS}" width="${bw}" height="${hS}" fill="var(--violet)" rx="1.5" data-tip="${mdw(days[i])} · 肌力 −${nf(s.st)} kcal · 共 ${s.min} 分" style="${anim}"/>`;
+    if(hC>0) bars+=`<rect x="${x(i)}" y="${yC}" width="${bw}" height="${hC}" fill="var(--accent)" rx="1.5" data-tip="${mdw(days[i])} · 有氧 −${nf(s.ca)} kcal · 共 ${s.min} 分" style="${anim}"/>`; });
+  const step=N>=90?14:7; const ticks=days.map((d,i)=>i%step===0?`<text class="ax" x="${(x(i)+bw/2).toFixed(1)}" y="${H-4}" text-anchor="middle">${mdStr(d)}</text>`:'').join('');
+  const grid=[.5,1].map(f=>`<line class="gridl" x1="36" x2="356" y1="${y(max/1.1*f).toFixed(1)}" y2="${y(max/1.1*f).toFixed(1)}"/><text class="ax" x="32" y="${(y(max/1.1*f)+3).toFixed(1)}" text-anchor="end">${Math.round(max/1.1*f)}</text>`).join('');
+  const agg={}; days.forEach(d=>(state.exercise[d]||[]).forEach(e=>{ const k=e.type; const a=agg[k]=agg[k]||{k,count:0,min:0,net:0,steps:0}; a.count++; a.min+=e.min; a.net+=exNet(e); a.steps+=e.steps||0; }));
+  const types=Object.values(agg).sort((a,b)=>b.net-a.net); const maxT=types[0]?.net||1;
+  const Wkg=+state.profile.weight||65; const est=MET.map(m=>[m[0],m[1],Math.round((m[2]-1)*3.5*Wkg/200*30),m[3]]).sort((a,b)=>b[2]-a[2]);
+  const wk=weekStart(currentDate); let sDays=0,cMin=0; for(let i=0;i<7;i++){ const L=state.exercise[addDays(wk,i)]||[]; if(L.some(e=>METMAP[e.type]?.[3])) sDays++; cMin+=sum(L.filter(e=>!METMAP[e.type]?.[3]).map(e=>e.min)); }
+  body.innerHTML=`<style>@keyframes grow{to{transform:scaleY(1)}}</style><div class="sbar">${segHTML('exR',[[7,'7 日'],[30,'30 日'],[90,'90 日']],N)}<span class="sp"></span><button class="small primary" id="exStatAdd">＋ 記錄運動</button></div>
+    <div class="kpis">${kpiBox('運動天數',active.length,`/ ${N} 天`)}${kpiBox('總時間',totMin,'分')}${kpiBox('淨消耗',nf(totNet),'kcal')}${kpiBox('肌力訓練',strengthN,'次')}</div>
+    <svg class="chart" viewBox="0 0 360 150">${grid}${bars}${ticks}</svg>
+    <div class="exlg"><span><i style="background:var(--violet)"></i>肌力</span><span><i style="background:var(--accent)"></i>有氧／走路</span>${totSteps?`<span>· 累計 ${nf(totSteps)} 步</span>`:''}</div>
+    <div class="kpis" style="grid-template-columns:1fr 1fr;margin-top:12px">${kpiBox('本週肌力',`${sDays} / 2`,sDays>=2?'次 ✔':'次')}${kpiBox('本週有氧',`${cMin} / 150`,cMin>=150?'分 ✔':'分')}</div>
+    ${types.length?`<div class="hint" style="margin:10px 0 4px"><b>依種類</b>（${N} 日）</div>`+types.map(t=>`<div class="rank"><div class="th">${exIconType(t.k)}</div><div class="n">${exLabelType(t.k)}<small>${t.count} 次 · ${t.min} 分${t.steps?` · ${nf(t.steps)} 步`:''}</small></div><div class="bar"><i style="width:${(t.net/maxT*100).toFixed(1)}%;background:${METMAP[t.k]?.[3]?'var(--violet)':'var(--accent)'}"></i></div><div class="v"><b>${nf(t.net)} kcal</b><small>${totNet?Math.round(t.net/totNet*100):0}% · 每次 ${nf(t.net/t.count)}</small></div></div>`).join(''):'<div class="empty">此區間沒有運動記錄，點上方「＋ 記錄運動」開始。</div>'}
+    <div class="hint" style="margin:14px 0 4px"><b>估算：各種運動做 30 分鐘的淨消耗</b>（體重 ${Wkg} kg${state.profile.weight?'':'，未設定體重以 65 kg 估算'}）· 點一下即可記錄</div>
+    <div class="estgrid">${est.map(e=>`<div class="estc" data-t="${e[0]}"><span>${e[1]}${e[3]?' 💪':''}</span><b>${e[2]}</b><small>kcal / 30 分</small></div>`).join('')}</div>
+    <div class="hint">淨消耗 = 運動總消耗 − 同時段的基礎代謝，也就是「比不運動多燒掉的」。依回補比例（目前 ${Math.round(eatBackRatio()*100)}%）加進當日熱量目標，熱量盈虧統計已一併計入。</div>`;
+  bindSeg('exR', v=>{ state.ui.exRange=+v; save(); renderStats(); });
+  $('exStatAdd').onclick=()=>{ $('statsModal').classList.remove('open'); setTimeout(openExModal, 150); };
+  body.querySelectorAll('.estc').forEach(el=>el.onclick=()=>{ $('statsModal').classList.remove('open'); setTimeout(()=>openExModal({type:el.dataset.t,min:30}), 150); });
 }
 function autoWeekReview(){ const lastMon=weekStart(addDays(todayStr(),-7)); if(state.game.reviewSeen===lastMon) return; if(weekStats(lastMon).logDays>=3){ state.game.reviewSeen=lastMon; save(); calMonth=currentDate.slice(0,7); weekCursor=lastMon; state.ui.statsTab='week'; $('statsModal').classList.add('open'); renderStats(); toast('上週回顧已準備好 📋'); } }
 
@@ -1564,19 +1673,50 @@ function renderDataPane(){
 }
 
 // ---------- 運動 ----------
-function openExModal(){
-  $('exType').innerHTML=MET.map(m=>`<option value="${m[0]}">${m[1]}（MET ${m[2]}）</option>`).join(''); $('exKcal').value=''; renderExList(); exPreview(); $('exModal').classList.add('open');
+let exMode='met';
+const EX_PRESETS=[['走路 1 萬步','steps',null,10000],['重訓 60 分','met','lift',60],['慢跑 30 分','met','jog',30],['籃球 60 分','met','bball',60],['羽球 60 分','met','badminton',60],['快走 30 分','met','fastwalk',30]];
+function openExModal(preset){
+  exMode = preset && preset.type==='steps' ? 'steps' : 'met'; renderExFields(preset); renderExList(); renderExEst(); $('exModal').classList.add('open');
 }
-function exPreview(){ const e={type:$('exType').value,min:+$('exMin').value||0,kcal:+$('exKcal').value||0}; const net=exNet(e); $('exPreview').innerHTML=`預估淨消耗 <b>${nf(net)}</b> kcal（${state.profile.weight?`體重 ${state.profile.weight} kg`:'未設定體重，以 65 kg 估算'}）· 回補 ${Math.round(eatBackRatio()*100)}% → 目標 +${nf(Math.round(net*eatBackRatio()))} kcal`; }
-['exType','exMin','exKcal'].forEach(id=>$(id).addEventListener('input',exPreview));
-function renderExList(){ const list=state.exercise[currentDate]||[]; $('exList').innerHTML=list.length?`<div class="hint" style="margin:0 0 4px">${mdw(currentDate)} 的運動</div>`+list.map(e=>`<div class="entry" style="padding:6px 0"><div class="th">${METMAP[e.type]?.[3]?'🏋':'🏃'}</div><div class="n"><div>${METMAP[e.type]?.[1]||e.type} · ${e.min} 分</div><small>淨消耗 ${nf(exNet(e))} kcal${e.kcal?`（手錶 ${e.kcal}）`:''}</small></div><button class="del" data-id="${e.id}">✕</button></div>`).join(''):''; $('exList').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ state.exercise[currentDate]=list.filter(x=>x.id!==b.dataset.id); if(!state.exercise[currentDate].length) delete state.exercise[currentDate]; save(); renderExList(); renderToday(); }); }
-$('exAdd').onclick=()=>{ const min=+$('exMin').value; if(!(min>0)){ toast('請輸入分鐘數',{level:'warn'}); return; } (state.exercise[currentDate]=state.exercise[currentDate]||[]).push({id:uid(),type:$('exType').value,min,kcal:+$('exKcal').value||0,t:Date.now()}); save(); renderExList(); renderToday(); const pk=$('plusk'); if(pk){ pk.classList.add('pop'); } toast('已記錄運動'); feedback('add'); };
+function renderExFields(preset){
+  $('exMode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===exMode)); const f=$('exFields');
+  const sel=`<label>種類<select id="exType">${MET.map(m=>`<option value="${m[0]}">${m[1]}${m[3]?'（肌力）':''}</option>`).join('')}</select></label>`;
+  if(exMode==='met') f.innerHTML=`<div class="row">${sel}<label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30" inputmode="numeric"></label></div>`;
+  else if(exMode==='watch') f.innerHTML=`<div class="row">${sel}<label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30" inputmode="numeric"></label></div><label>手錶顯示的消耗（kcal）<input id="exKcal" type="number" min="1" step="1" inputmode="numeric" placeholder="例：350"></label><div class="hint">手錶數值多半是「總消耗」，會扣掉同時段的基礎代謝，得到真正多燒的「淨消耗」。</div>`;
+  else f.innerHTML=`<label>步數<input id="exSteps" type="number" min="100" step="100" inputmode="numeric" placeholder="例：10000"></label><div class="hint">以每 100 步約 1 分鐘、每步約 0.04 kcal（依體重調整）估算。若已記錄「走路」，不要重複加。</div>`;
+  if(preset){ if(preset.type==='steps'){ $('exSteps').value=preset.steps||10000; } else { $('exType').value=preset.type; $('exMin').value=preset.min||30; } }
+  f.querySelectorAll('input,select').forEach(i=>i.addEventListener('input', exPreview));
+  $('exPresets').innerHTML = EX_PRESETS.map((p,i)=>`<button class="chip" data-i="${i}">${p[0]}</button>`).join('');
+  $('exPresets').querySelectorAll('button').forEach(b=>b.onclick=()=>{ const p=EX_PRESETS[+b.dataset.i]; exMode=p[1]; renderExFields(p[1]==='steps'?{type:'steps',steps:p[3]}:{type:p[2],min:p[3]}); });
+  exPreview();
+}
+$('exMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{ exMode=b.dataset.v; renderExFields(); });
+function exDraft(){
+  if(exMode==='steps'){ const st=+($('exSteps')?.value||0); if(!(st>0)) return null; const W=+state.profile.weight||65; return {type:'steps', steps:Math.round(st), min:Math.max(1,Math.round(st/100)), kcal:Math.round(st*W*0.00057)}; }
+  const type=$('exType')?.value, min=+($('exMin')?.value||0); if(!type||!(min>0)) return null;
+  const kcal = exMode==='watch' ? +($('exKcal')?.value||0) : 0; if(exMode==='watch' && !(kcal>0)) return null;
+  return {type, min, kcal};
+}
+function exPreview(){
+  const e=exDraft(); const box=$('exPreview'); if(!e){ box.textContent = exMode==='watch' ? '輸入時間與手錶顯示的消耗。' : exMode==='steps' ? '輸入今天的步數。' : '選擇運動種類與時間。'; return; }
+  const net=exNet(e), gross=exGross(e), r=eatBackRatio();
+  box.innerHTML=`${exMode==='steps'?`約 ${e.min} 分鐘 · `:''}總消耗約 <b>${nf(gross)}</b> kcal，扣掉同時段基礎代謝後，淨消耗 <b style="color:var(--violet)">${nf(net)}</b> kcal${T('kcal')?` · 回補 ${Math.round(r*100)}% → 今日目標 <b>+${nf(Math.round(net*r))}</b> kcal`:''}${state.profile.weight?'':' · 未設定體重，以 65 kg 估算'}`;
+}
+function renderExEst(){
+  const Wkg=+state.profile.weight||65; const est=MET.map(m=>[m[0],m[1],Math.round((m[2]-1)*3.5*Wkg/200*30),m[3]]).sort((a,b)=>b[2]-a[2]);
+  $('exEstBox').innerHTML=`<div class="estgrid">${est.map(e=>`<div class="estc" data-t="${e[0]}"><span>${e[1]}${e[3]?' 💪':''}</span><b>${e[2]}</b><small>kcal</small></div>`).join('')}</div><div class="hint">以體重 ${Wkg} kg 計；點一下帶入 30 分鐘。</div>`;
+  $('exEstBox').querySelectorAll('.estc').forEach(el=>el.onclick=()=>{ exMode='met'; renderExFields({type:el.dataset.t,min:30}); });
+}
+$('exEst').querySelector('h3').onclick=()=>$('exEst').classList.toggle('closed');
+function renderExList(){ const list=state.exercise[currentDate]||[]; $('exList').innerHTML=list.length?`<div class="hint" style="margin:0 0 4px">${currentDate===todayStr()?'今天':mdw(currentDate)}已記錄</div>`+list.map(e=>`<div class="exi"><span class="ic">${exIcon(e)}</span><div class="n"><div>${exLabel(e)}</div><small>${e.min} 分 · 淨消耗 ${nf(exNet(e))} kcal${e.kcal&&e.type!=='steps'?'（手錶）':''}</small></div><b>−${nf(exNet(e))}</b><button class="del" data-id="${e.id}">✕</button></div>`).join(''):''; $('exList').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ state.exercise[currentDate]=list.filter(x=>x.id!==b.dataset.id); if(!state.exercise[currentDate].length) delete state.exercise[currentDate]; save(); renderExList(); renderToday(); }); }
+$('exAdd').onclick=()=>{ const e=exDraft(); if(!e){ toast(exMode==='steps'?'請輸入步數':exMode==='watch'?'請輸入時間與手錶消耗':'請輸入運動時間',{level:'warn'}); return; } e.id=uid(); e.t=Date.now(); (state.exercise[currentDate]=state.exercise[currentDate]||[]).push(e); save(); renderExList(); renderToday(); checkBadges(false); const pk=$('plusk'); if(pk){ pk.classList.add('pop'); } toast(`已記錄：${exLabel(e)} · 淨消耗 ${nf(exNet(e))} kcal`); feedback('add'); if(exMode==='steps'){ $('exSteps').value=''; } exPreview(); };
 
 // ---------- 主題 ----------
 function applyTheme(){ const t=fx.theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):fx.theme; document.documentElement.dataset.theme=t; $('btnTheme').textContent=fx.theme==='auto'?'🌗':fx.theme==='dark'?'🌙':'☀️'; $('btnTheme').title='主題：'+(fx.theme==='auto'?'跟隨系統':fx.theme==='dark'?'深色':'淺色'); document.querySelector('meta[name=theme-color]').content=cssVar('--bg'); }
 function themeReveal(x,y,apply,animate=true){
   if(!animate||RM.matches||!document.startViewTransition||document.hidden){ apply(); if(animate&&!RM.matches){ document.documentElement.classList.add('theming'); setTimeout(()=>document.documentElement.classList.remove('theming'),400); } return; }
   let vt; try{ vt=document.startViewTransition(apply); }catch(e){ apply(); return; }
+  for(const k of ['ready','finished','updateCallbackDone']){ try{ vt[k] && vt[k].catch(()=>{}); }catch(e){} }
   vt.ready.then(()=>{ const r=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y)); document.documentElement.animate({clipPath:[`circle(0px at ${x}px ${y}px)`,`circle(${r}px at ${x}px ${y}px)`]},{duration:520,easing:'ease-in',pseudoElement:'::view-transition-new(root)'}); }).catch(()=>{}); vt.finished.catch(()=>{});
 }
 $('btnTheme').onclick=e=>{ const r=e.currentTarget.getBoundingClientRect(); const next={auto:'light',light:'dark',dark:'auto'}[fx.theme]; themeReveal(r.left+r.width/2,r.top+r.height/2,()=>{ fx.theme=next; saveFx(); applyTheme(); }); };
@@ -1603,12 +1743,13 @@ function csvEsc(v){ v=String(v??''); return /[",\n]/.test(v)?'"'+v.replace(/"/g,
 function exportCSV(mode, days){
   const from=days?addDays(todayStr(),-(days-1)):'0000'; const rows=[];
   if(mode==='detail'){ rows.push(['日期','星期','時間','餐別','產品','每份說明','份數',...NUTRIENTS.map(n=>`${n.label}(${n.unit})`)]); Object.keys(state.logs).filter(d=>d>=from).sort().forEach(d=>state.logs[d].forEach(e=>rows.push([d,WEEK[parseD(d).getDay()],e.t?new Date(e.t).toTimeString().slice(0,5):'',SLOT_NAME[e.slot]||'',e.name,e.serving||'',e.qty,...NUTRIENTS.map(n=>num((e.n[n.key]||0)*e.qty))]))); }
-  else { rows.push(['日期','星期','項目數','總熱量','目標熱量','差額','蛋白質','脂肪','碳水化合物','飽和脂肪','反式脂肪','糖','鈉']); Object.keys(state.logs).filter(d=>d>=from).sort().forEach(d=>{ const t=dayTotals(d), K=kcalTargetFor(d); rows.push([d,WEEK[parseD(d).getDay()],state.logs[d].length,num(t.kcal),K,num(t.kcal-K),num(t.protein),num(t.fat),num(t.carb),num(t.satfat),num(t.transfat),num(t.sugar),num(t.sodium)]); }); }
-  const csv='﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\r\n'); download(new Blob([csv],{type:'text/csv;charset=utf-8'}),`營養記錄_${mode==='detail'?'明細':'彙總'}_${days?'近'+days+'天':'全部'}_${todayStr()}.csv`);
+  else if(mode==='ex'){ rows.push(['日期','星期','時間','種類','分鐘','步數','手錶kcal','總消耗kcal','淨消耗kcal']); Object.keys(state.exercise).filter(d=>d>=from).sort().forEach(d=>state.exercise[d].forEach(e=>rows.push([d,WEEK[parseD(d).getDay()],e.t?new Date(e.t).toTimeString().slice(0,5):'',exLabelType(e.type),e.min,e.steps||'',e.type!=='steps'&&e.kcal?e.kcal:'',exGross(e),exNet(e)]))); }
+  else { rows.push(['日期','星期','項目數','總熱量','目標熱量','差額','蛋白質','脂肪','碳水化合物','飽和脂肪','反式脂肪','糖','鈉','運動分鐘','運動淨消耗','運動回補']); const dates=new Set([...Object.keys(state.logs),...Object.keys(state.exercise)].filter(d=>d>=from)); [...dates].sort().forEach(d=>{ const t=dayTotals(d), K=kcalTargetFor(d), es=exDayStats(d); rows.push([d,WEEK[parseD(d).getDay()],(state.logs[d]||[]).length,num(t.kcal),K,num(t.kcal-K),num(t.protein),num(t.fat),num(t.carb),num(t.satfat),num(t.transfat),num(t.sugar),num(t.sodium),es.min,nf(es.net).replace(',',''),T('kcal')?exerciseExtra(d):0]); }); }
+  const csv='﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\r\n'); download(new Blob([csv],{type:'text/csv;charset=utf-8'}),`營養記錄_${{detail:'明細',daily:'彙總',ex:'運動明細'}[mode]}_${days?'近'+days+'天':'全部'}_${todayStr()}.csv`);
   if(!days) markBackup(); toast('已匯出 CSV');
 }
 $('btnExport').onclick=e=>{ e.stopPropagation(); $('exportMenu').classList.toggle('open'); };
-$('exportMenu').querySelectorAll('button').forEach(b=>b.onclick=()=>{ $('exportMenu').classList.remove('open'); const x=b.dataset.x; if(x==='json') exportJSON(); else if(x==='csv-detail') exportCSV('detail',90); else if(x==='csv-daily') exportCSV('daily',90); else exportCSV('detail',0); });
+$('exportMenu').querySelectorAll('button').forEach(b=>b.onclick=()=>{ $('exportMenu').classList.remove('open'); const x=b.dataset.x; if(x==='json') exportJSON(); else if(x==='csv-detail') exportCSV('detail',90); else if(x==='csv-daily') exportCSV('daily',90); else if(x==='csv-ex') exportCSV('ex',0); else exportCSV('detail',0); });
 $('btnImport').onclick=()=>$('importFile').click();
 $('importFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!s.products||!s.logs) throw new Error(); if(confirm('匯入會覆蓋目前所有資料，確定？')){ const snap=JSON.stringify(state); state=normalize(s); if(state.targetMode==='auto'){ const c=calcProfile(state.profile); if(c) state.targets=c.targets; } save(); pushUndo('匯入備份',null,()=>{ state=normalize(JSON.parse(snap)); }); computeUsage(); checkBadges(true); renderProducts(); renderCombos(); renderToday(); toast('已匯入備份',{undo:true}); } }catch(err){ toast('檔案格式不正確',{level:'danger'}); } }; r.readAsText(f); e.target.value=''; };
 function renderBanner(){
@@ -1621,7 +1762,7 @@ $('bannerExport').onclick=exportJSON; $('bannerSnooze').onclick=()=>{ state.meta
 // ---------- 成就與等級 ----------
 const TITLES=[[1,'起步者'],[3,'記錄新手'],[5,'均衡學徒'],[8,'營養行家'],[12,'達標大師'],[16,'傳奇教練']];
 const xpNeed=L=>50*L*(L+1);
-function xpForDate(d){ const ev=evalDay(d); if(!ev.logged) return 0; return Math.min(ev.log.length*5,25)+(ev.hit?30:0)+(ev.perfect?10:0)+questResults(d).filter(r=>r.ok).length*10+(questResults(d).every(r=>r.ok)&&questResults(d).length?30:0); }
+function xpForDate(d){ const ev=evalDay(d); const exXp=(state.exercise[d]||[]).length?10:0; if(!ev.logged) return exXp; return exXp+Math.min(ev.log.length*5,25)+(ev.hit?30:0)+(ev.perfect?10:0)+questResults(d).filter(r=>r.ok).length*10+(questResults(d).every(r=>r.ok)&&questResults(d).length?30:0); }
 function totalXP(){ const first=earliestDate(); if(!first) return 0; let xp=0, run=0; for(let d=first; d<=todayStr(); d=addDays(d,1)){ xp+=xpForDate(d); if(evalDay(d).hit){ run++; if(run%7===0) xp+=50; } else run=0; } return xp; }
 function levelOf(xp){ let L=1, acc=0; while(acc+xpNeed(L)<=xp){ acc+=xpNeed(L); L++; } return {L, into:xp-acc, need:xpNeed(L)}; }
 const titleOf=L=>TITLES.filter(t=>t[0]<=L).pop()[1];
@@ -1643,6 +1784,9 @@ const BADGES=[
   {id:'perfectWeek',icon:'🌟',name:'完美一週',desc:'同一週 7 天皆達標',prog:()=>{ let b=0; for(const d of allDays()){ const wk=weekStart(d); let n=0; for(let i=0;i<7;i++) if(evalDay(addDays(wk,i)).hit) n++; b=Math.max(b,n); } return [Math.min(7,b),7]; }},
   {id:'entries100',icon:'💯',name:'百筆記錄',desc:'累計 100 筆記錄',prog:()=>[Math.min(100,sum(Object.values(state.logs).map(l=>l.length))),100]},
   {id:'exercise5',icon:'🏋',name:'動起來',desc:'記錄 5 次運動',prog:()=>[Math.min(5,sum(Object.values(state.exercise).map(l=>l.length))),5]},
+  {id:'exercise20',icon:'🏃',name:'運動常客',desc:'記錄 20 次運動',prog:()=>[Math.min(20,sum(Object.values(state.exercise).map(l=>l.length))),20]},
+  {id:'strength10',icon:'💪',name:'肌力十次',desc:'完成 10 次肌力訓練',prog:()=>[Math.min(10,sum(Object.values(state.exercise).map(l=>l.filter(e=>METMAP[e.type]?.[3]).length))),10]},
+  {id:'steps100k',icon:'🚶',name:'十萬步',desc:'累計記錄 10 萬步',prog:()=>[Math.min(100000,sum(Object.values(state.exercise).flat().map(e=>e.steps||0))),100000]},
 ];
 let badgeQueue=[], badgeShowing=false;
 function showBadgeCard(b){ badgeQueue.push(b); if(badgeShowing) return; badgeShowing=true; const next=()=>{ const x=badgeQueue.shift(); if(!x){ badgeShowing=false; return; } const el=document.createElement('div'); el.className='bcard'; el.innerHTML=`<span class="ic">${x.icon}</span><div><b>解鎖徽章：${x.name}</b><span style="color:var(--muted);font-size:12px">${x.desc}</span></div>`; document.body.appendChild(el); feedback('win'); setTimeout(()=>{ el.remove(); next(); },3500); }; next(); }
@@ -1665,6 +1809,7 @@ async function buildShareImage(){
   x.fillStyle=v('--text'); x.font=font(44,800); x.fillText(mdw(currentDate)+(currentDate===todayStr()?' · 今天':''),80,120);
   const gc={cut:v('--cut'),bulk:v('--bulk'),keep:v('--keep')}[g]; x.fillStyle=gc; x.beginPath(); x.roundRect(80,150,200,54,27); x.fill(); x.fillStyle='#fff'; x.font=font(26); x.textAlign='center'; x.fillText(GOALS[g].label+'模式',180,187); x.textAlign='left';
   if(s.hit){ x.fillStyle=v('--text'); x.font=font(30); x.textAlign='right'; x.fillText(`🔥 連續 ${s.hit} 天達標`,W-80,190); x.textAlign='left'; }
+  const exS=exDayStats(currentDate); if(exS.n){ x.fillStyle=v('--violet'); x.font=font(26,600); x.textAlign='right'; x.fillText(`🏋 運動 ${exS.min} 分 · −${nf(exS.net)} kcal`,W-80,s.hit?236:190); x.textAlign='left'; }
   const cx=290,cy=460,R=170; x.lineWidth=36; x.lineCap='round'; x.strokeStyle=v('--line'); x.beginPath(); x.arc(cx,cy,R,0,Math.PI*2); x.stroke(); const p=K?Math.min(1,t.kcal/K):0; x.strokeStyle=K&&t.kcal>K?v('--danger'):v('--accent'); if(p>0){ x.beginPath(); x.arc(cx,cy,R,-Math.PI/2,-Math.PI/2+p*Math.PI*2); x.stroke(); }
   x.fillStyle=v('--text'); x.textAlign='center'; x.font=font(72,800); x.fillText(nf(t.kcal),cx,cy+15); x.font=font(26,500); x.fillStyle=v('--muted'); x.fillText(K?`/ ${nf(K)} kcal · ${Math.round(t.kcal/K*100)}%`:'kcal',cx,cy+60); x.textAlign='left';
   [['protein','蛋白質',v('--blue')],['fat','脂肪',v('--amber')],['carb','碳水',v('--violet')]].forEach(([k,l,col],i)=>{ const y=340+i*110; x.fillStyle=v('--text'); x.font=font(28); x.fillText(l,540,y); x.textAlign='right'; x.fillText(`${num(t[k])} g${DT[k]?` / ${DT[k]}`:''}`,W-80,y); x.textAlign='left'; x.fillStyle=v('--line'); x.beginPath(); x.roundRect(540,y+20,W-620,18,9); x.fill(); x.fillStyle=col; x.beginPath(); x.roundRect(540,y+20,(W-620)*(DT[k]?Math.min(1,t[k]/DT[k]):0),18,9); x.fill(); });
@@ -1707,13 +1852,22 @@ function applyLook(){
 let view = fx.view==='today' ? 'today' : 'products';
 function syncTabs(){ document.querySelectorAll('#tabbar .tb[data-view]').forEach(b=>b.classList.toggle('on', b.dataset.view===view)); moveTabInd(); }
 function moveTabInd(){ const on=document.querySelector('#tabbar .tb.on'); const ind=$('tabInd'); if(!on||!ind) return; ind.style.left=on.offsetLeft+'px'; ind.style.width=on.offsetWidth+'px'; }
+const VIEW_ORDER=['products','today'];
+function vtSafe(vt){ if(!vt) return; for(const k of ['ready','finished','updateCallbackDone']){ try{ vt[k] && vt[k].catch(()=>{}); }catch(e){} } }
 function setView(v, dir){
   const same = v===view && document.body.dataset.view===v;
-  view=v; fx.view=v; saveFx(); document.body.dataset.view=v; syncTabs();
-  if(same || !MOBILE.matches) return;
-  const pane=document.querySelector(v==='today'?'.pane-today':'.pane-products');
-  window.scrollTo({top:0, behavior:'instant'});
-  if(!RM.matches && pane && pane.animate){ const d = dir ?? (v==='today'?1:-1); pane.animate([{opacity:0,transform:`translateX(${26*d}px)`},{opacity:1,transform:'none'}],{duration:280,easing:'cubic-bezier(.2,.8,.2,1)'}); }
+  const apply=()=>{ view=v; fx.view=v; saveFx(); document.body.dataset.view=v; syncTabs(); };
+  if(same || !MOBILE.matches || RM.matches){ apply(); if(!same && MOBILE.matches) window.scrollTo({top:0,behavior:'instant'}); return; }
+  const d = dir ?? (VIEW_ORDER.indexOf(v) > VIEW_ORDER.indexOf(view) ? 1 : -1);
+  const from=document.querySelector(view==='today'?'.pane-today':'.pane-products'), to=document.querySelector(v==='today'?'.pane-today':'.pane-products');
+  if(document.startViewTransition){
+    document.documentElement.style.setProperty('--vt-dir', d); from.style.viewTransitionName='pane-out';
+    let vt, ran=false; try{ vt=document.startViewTransition(()=>{ ran=true; from.style.viewTransitionName=''; apply(); window.scrollTo({top:0,behavior:'instant'}); to.style.viewTransitionName='pane-in'; }); }catch(e){ from.style.viewTransitionName=''; apply(); return; }
+    vtSafe(vt); setTimeout(()=>{ if(!ran){ ran=true; from.style.viewTransitionName=''; apply(); } }, 600);
+    vt.finished.catch(()=>{}).finally(()=>{ to.style.viewTransitionName=''; from.style.viewTransitionName=''; }); return;
+  }
+  apply(); window.scrollTo({top:0, behavior:'instant'});
+  if(to && to.animate) to.animate([{opacity:0,transform:`translateX(${30*d}px)`},{opacity:1,transform:'none'}],{duration:300,easing:'cubic-bezier(.2,.8,.2,1)'});
 }
 $('tabbar').querySelectorAll('.tb').forEach(b=>b.onclick=()=>{ feedback('qty'); if(b.dataset.view) setView(b.dataset.view); else if(b.dataset.act==='stats') openStats(); else if(b.dataset.act==='game') $('btnGame').click(); else if(b.dataset.act==='targets') openTargets(); });
 $('fab').onclick=()=>{ setView('products',-1); if(!IS_IOS) setTimeout(()=>$('search').focus(),320); };
@@ -1786,7 +1940,8 @@ function renderLookPane(){
       ${tgl('haptic','震動回饋','加入、刪除、達標時震動（支援的裝置）', !!fx.haptic)}
       ${tgl('sound','音效','加入與達標的合成音', !!fx.sound)}
     </div>
-    <div class="hint">這些是裝置層偏好，只存在這個瀏覽器或 App，不會進入 JSON 備份。</div>`;
+    <div class="hint">這些是裝置層偏好，只存在這個瀏覽器或 App，不會進入 JSON 備份。 <button class="link" id="lkOnb">重新執行新手引導</button></div>`;
+  $('lkOnb').onclick=()=>{ $('targetModal').classList.remove('open'); fx.onboarded=false; saveFx(); setTimeout(startOnboarding, 250); };
   $('lkTheme').querySelectorAll('button').forEach(b=>b.onclick=e=>{ const r=b.getBoundingClientRect(); themeReveal(r.left+r.width/2, r.top+r.height/2, ()=>{ fx.theme=b.dataset.v; saveFx(); applyTheme(); applyLook(); }); $('lkTheme').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); });
   p.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>{ const r=b.getBoundingClientRect(); themeReveal(r.left+r.width/2, r.top+r.height/2, ()=>{ fx.accent=b.dataset.v; saveFx(); applyLook(); }); p.querySelectorAll('.swatch').forEach(x=>x.classList.toggle('on',x===b)); feedback('qty'); });
   p.querySelectorAll('[data-t]').forEach(i=>i.onchange=()=>{ const k=i.dataset.t, on=i.checked; if(k==='motion') fx.motion=on?'auto':'off'; else fx[k]=on; saveFx(); applyLook(); renderFxBtn(); if(k==='sound'&&on) snd('add'); if(k==='haptic'&&on) haptic('add'); });
@@ -1806,12 +1961,87 @@ document.querySelectorAll('.dialog').forEach(d=>{
   d.addEventListener('pointerup', end); d.addEventListener('pointercancel', end);
 });
 
+// ---------- 跳轉動效：hero 轉場、頁面景深、捲動浮現、數字滾輪 ----------
+function heroOpen(thumbEl, p){
+  if(RM.matches || !document.startViewTransition || !p.img || !thumbEl){ openModal(p); return; }
+  const m=$('modal'); thumbEl.style.viewTransitionName='hero'; m.classList.add('instant');
+  let vt, ran=false; try{ vt=document.startViewTransition(()=>{ ran=true; thumbEl.style.viewTransitionName=''; openModal(p); const img=$('drop').querySelector('img'); if(img) img.style.viewTransitionName='hero'; }); }
+  catch(e){ thumbEl.style.viewTransitionName=''; m.classList.remove('instant'); openModal(p); return; }
+  vtSafe(vt); setTimeout(()=>{ if(!ran){ ran=true; thumbEl.style.viewTransitionName=''; m.classList.remove('instant'); openModal(p); } }, 600);
+  vt.finished.catch(()=>{}).finally(()=>{ const img=$('drop').querySelector('img'); if(img) img.style.viewTransitionName=''; thumbEl.style.viewTransitionName=''; m.classList.remove('instant'); });
+}
+document.querySelectorAll('.dialog').forEach(d=>[...d.children].forEach((c,i)=>c.style.setProperty('--i', Math.min(i,8))));
+new MutationObserver(()=>{ document.body.classList.toggle('has-page', !!document.querySelector('.modal.page.open')); }).observe(document.body,{attributes:true,attributeFilter:['class'],subtree:true});
+const revealIO = ('IntersectionObserver' in window) ? new IntersectionObserver(es=>{ es.forEach((en,i)=>{ if(en.isIntersecting){ en.target.style.setProperty('--d', Math.min(i,6)); en.target.classList.add('in'); revealIO.unobserve(en.target); } }); },{threshold:.06}) : null;
+function setupReveal(){ if(!revealIO || RM.matches) return; document.querySelectorAll('#todayPane > *').forEach(el=>{ if(el.classList.contains('reveal')) return; el.classList.add('reveal'); revealIO.observe(el); });
+  const force=all=>document.querySelectorAll('.reveal:not(.in)').forEach((el,i)=>{ if(all || el.getBoundingClientRect().top<innerHeight){ el.style.setProperty('--d',Math.min(i,6)); el.classList.add('in'); } });
+  setTimeout(()=>force(false),1500); setTimeout(()=>force(true),4000); }
+function odometer(el, value){
+  if(!el) return; const str=nf(Math.max(0,Math.round(value||0)));
+  if(RM.matches){ el.classList.remove('odo'); el.textContent=str; return; }
+  const chars=str.split(''); const need = !el.classList.contains('odo') || el.children.length!==chars.length || [...el.children].some((c,i)=>c.classList.contains('d')!==/\d/.test(chars[i]));
+  el.classList.add('odo'); el.setAttribute('aria-label', str);
+  if(need){ el.innerHTML=chars.map(ch=>/\d/.test(ch)?`<span class="d"><i>${'0123456789'.split('').map(n=>`<b>${n}</b>`).join('')}</i></span>`:`<span class="sep">${ch}</span>`).join(''); }
+  const set=()=>{ [...el.children].forEach((c,i)=>{ const ch=chars[i]; if(c.classList.contains('d')) c.firstChild.style.transform=`translateY(-${ch}em)`; else c.textContent=ch; }); };
+  if(need){ [...el.children].forEach(c=>{ if(c.classList.contains('d')) c.firstChild.style.transform='translateY(0)'; }); setTimeout(set, 30); } else set();
+}
+// ---------- 首次引導：個人資料 → 活動量 → 目標 → 結果 ----------
+const onb={step:0, d:{sex:'M',age:'',height:'',weight:'',activity:'1.55',goal:'cut'}};
+const ONB_STEPS=5;
+function needOnboarding(){ return !fx.onboarded && !calcProfile(state.profile); }
+function onbDots(){ $('onbDots').innerHTML=Array.from({length:ONB_STEPS},(_,i)=>`<i class="${i===onb.step?'on':''}"></i>`).join(''); }
+const ACTS=[['1.2','🛋️','久坐','幾乎不運動，辦公室工作'],['1.375','🚶','輕度','每週運動 1–3 天'],['1.55','🏃','中度','每週運動 3–5 天'],['1.725','🏋️','高度','每週運動 6–7 天'],['1.9','🔥','極高','體力工作或每天兩練']];
+const GOALC=[['cut','🔥','減脂','熱量 −20%、蛋白質 2.0 g/kg，保留肌肉慢慢瘦'],['keep','⚖️','維持','熱量 ±0、蛋白質 1.4 g/kg，維持現狀'],['bulk','💪','增肌','熱量 +12%、蛋白質 1.8 g/kg，搭配重訓長肌肉']];
+function onbStepHTML(n){
+  const d=onb.d;
+  if(n===0) return `<div class="onb-card"><h2>歡迎使用 👋</h2><div class="sub">花 1 分鐘回答 3 個問題，就能算出你每天該吃多少熱量與蛋白質。之後隨時可以在「目標」裡修改。</div><div class="onb-feat"><div><span>🍱</span>點一下記錄</div><div><span>🎯</span>自動算目標</div><div><span>📊</span>統計與成就</div></div><div class="onb-actions"><button class="primary" data-go="1">開始設定</button></div></div><button class="onb-skip" id="onbSkip">先略過，直接開始使用</button>`;
+  if(n===1) return `<div class="onb-card fields"><h2>基本資料</h2><div class="sub">用來計算基礎代謝與每日消耗。</div><div class="lbl">性別<div class="segc" id="oSex"><button data-v="M" class="${d.sex==='M'?'on':''}">男</button><button data-v="F" class="${d.sex==='F'?'on':''}">女</button></div></div><div class="row3"><label>年齡<input id="oAge" type="number" inputmode="numeric" min="10" max="100" placeholder="30" value="${d.age||''}"></label><label>身高 cm<input id="oH" type="number" inputmode="decimal" min="100" max="250" step="0.1" placeholder="170" value="${d.height||''}"></label><label>體重 kg<input id="oW" type="number" inputmode="decimal" min="30" max="250" step="0.1" placeholder="65" value="${d.weight||''}"></label></div><div class="onb-actions"><button data-go="0" data-dir="-1">上一步</button><button class="primary" id="oNext1">下一步</button></div></div>`;
+  if(n===2) return `<div class="onb-card"><h2>平常運動量</h2><div class="sub">選最接近你一週的狀況。</div><div class="ochoice" id="oAct">${ACTS.map(a=>`<button data-v="${a[0]}" class="${d.activity===a[0]?'on':''}"><span class="e">${a[1]}</span><span><b>${a[2]}</b><small>${a[3]}</small></span></button>`).join('')}</div><div class="onb-actions"><button data-go="1" data-dir="-1">上一步</button><button class="primary" data-go="3">下一步</button></div></div>`;
+  if(n===3) return `<div class="onb-card"><h2>你的目標</h2><div class="sub">決定熱量要調高或調低，之後可以隨時切換。</div><div class="ochoice" id="oGoal">${GOALC.map(g=>`<button data-v="${g[0]}" class="${d.goal===g[0]?'on':''}"><span class="e">${g[1]}</span><span><b>${g[2]}</b><small>${g[3]}</small></span></button>`).join('')}</div><div class="onb-actions"><button data-go="2" data-dir="-1">上一步</button><button class="primary" data-go="4">看結果</button></div></div>`;
+  const c=calcProfile(d); if(!c) return onbStepHTML(1); const t=c.targets, g=GOALS[d.goal];
+  return `<div class="onb-card"><h2>你的每日目標</h2><div class="sub">${g.label}模式 · BMI ${c.bmi}（${bmiLabel(c.bmi)}）· 基礎代謝 ${nf(c.bmr)} · 每日消耗 ${nf(c.tdee)} kcal</div><div class="onb-big"><span id="oBig">0</span><small>kcal / 日</small></div><div class="onb-sub">蛋白質 <b>${t.protein} g</b> · 脂肪 <b>${t.fat} g</b> · 碳水 <b>${t.carb} g</b></div><div class="kpis" style="grid-template-columns:repeat(3,1fr);margin:0"><div class="kpi"><div class="l">蛋白質</div><div class="v" style="color:var(--blue)">${t.protein}<small> g</small></div></div><div class="kpi"><div class="l">脂肪</div><div class="v" style="color:var(--amber)">${t.fat}<small> g</small></div></div><div class="kpi"><div class="l">碳水</div><div class="v" style="color:var(--violet)">${t.carb}<small> g</small></div></div></div><div class="hint">飽和脂肪與糖以熱量 10% 為上限，鈉 2,000 mg。記錄運動時會依回補比例把消耗加回當日目標。</div><div class="onb-actions"><button data-go="3" data-dir="-1">上一步</button><button class="primary" id="oFinish">開始使用 🎉</button></div></div>`;
+}
+function bindOnbStep(n){
+  const body=$('onbBody');
+  body.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ feedback('qty'); onbGo(+b.dataset.go, +(b.dataset.dir||1)); });
+  const sk=$('onbSkip'); if(sk) sk.onclick=onbSkip;
+  if(n===1){ $('oSex').querySelectorAll('button').forEach(b=>b.onclick=()=>{ onb.d.sex=b.dataset.v; $('oSex').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); });
+    ['oAge','oH','oW'].forEach(id=>$(id).addEventListener('input',()=>{ onb.d.age=$('oAge').value; onb.d.height=$('oH').value; onb.d.weight=$('oW').value; }));
+    $('oNext1').onclick=()=>{ onb.d.age=$('oAge').value; onb.d.height=$('oH').value; onb.d.weight=$('oW').value; const a=+onb.d.age,h=+onb.d.height,w=+onb.d.weight; if(!(a>=10&&a<=100)){ toast('請輸入 10–100 的年齡',{level:'warn'}); $('oAge').focus(); return; } if(!(h>=100&&h<=250)){ toast('請輸入身高（公分）',{level:'warn'}); $('oH').focus(); return; } if(!(w>=30&&w<=250)){ toast('請輸入體重（公斤）',{level:'warn'}); $('oW').focus(); return; } feedback('qty'); onbGo(2,1); };
+    setTimeout(()=>{ if(!onb.d.age && !IS_IOS) $('oAge').focus(); },400); }
+  if(n===2) $('oAct').querySelectorAll('button').forEach(b=>b.onclick=()=>{ onb.d.activity=b.dataset.v; $('oAct').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); feedback('qty'); });
+  if(n===3) $('oGoal').querySelectorAll('button').forEach(b=>b.onclick=()=>{ onb.d.goal=b.dataset.v; $('oGoal').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); feedback('qty'); });
+  if(n===4){ const c=calcProfile(onb.d); tween($('oBig'), 0, c.targets.kcal, v=>nf(v), 900); $('oFinish').onclick=onbFinish; }
+}
+function onbGo(n, dir){
+  const body=$('onbBody'); const cur=body.firstElementChild;
+  const run=()=>{ onb.step=n; onbDots(); body.innerHTML=onbStepHTML(n); bindOnbStep(n); const el=body.firstElementChild; if(el&&!RM.matches&&el.animate) el.animate([{opacity:0,transform:`translateX(${44*(dir||1)}px) scale(.98)`},{opacity:1,transform:'none'}],{duration:400,easing:'cubic-bezier(.2,.8,.2,1)'}); $('onb').scrollTo({top:0,behavior:'smooth'}); };
+  if(cur && !RM.matches && cur.animate) onDone(cur.animate([{opacity:1,transform:'none'},{opacity:0,transform:`translateX(${-44*(dir||1)}px) scale(.98)`}],{duration:200,easing:'ease-in',fill:'forwards'}), 260, run); else run();
+}
+function onbFinish(){
+  const c=calcProfile(onb.d); if(!c) return;
+  state.profile={sex:onb.d.sex,age:onb.d.age,height:onb.d.height,weight:onb.d.weight,activity:onb.d.activity,goal:onb.d.goal}; state.targetMode='auto'; state.targets=c.targets; fx.onboarded=true; saveFx(); save();
+  const el=$('onb'); const done=()=>{ el.remove(); renderToday(); renderProducts(); setupReveal(); toast(`已套用${GOALS[state.profile.goal].label}目標：每日 ${nf(c.targets.kcal)} kcal`); feedback('win'); if(!RM.matches && typeof confetti==='function') confetti(innerWidth/2, innerHeight*.3); };
+  if(RM.matches || !el.animate){ done(); return; }
+  onDone(el.animate([{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(1.08)'}],{duration:450,easing:'ease-in',fill:'forwards'}), 520, done);
+}
+function onbSkip(){ fx.onboarded=true; saveFx(); const el=$('onb'); const done=()=>{ el.remove(); setupReveal(); toast('之後可在「目標」填寫個人資料'); }; if(RM.matches||!el.animate){ done(); return; } onDone(el.animate([{opacity:1},{opacity:0}],{duration:320,fill:'forwards'}), 380, done); }
+function startOnboarding(){
+  const el=$('onb'); if(!el) return; const p=state.profile||{}; Object.assign(onb.d,{sex:p.sex||'M',activity:p.activity||'1.55',goal:GOALS[p.goal]?p.goal:'cut',age:p.age||'',height:p.height||'',weight:p.weight||''});
+  onb.step=0; onbDots(); $('onbBody').innerHTML=onbStepHTML(0); bindOnbStep(0);
+  const sp=$('splash');
+  if(sp && document.startViewTransition && !RM.matches){
+    const a=sp.querySelector('.sl'), b=el.querySelector('.sl'); a.style.viewTransitionName='brand'; b.style.viewTransitionName='brand'; el.classList.add('instant');
+    let vt, ran=false; try{ vt=document.startViewTransition(()=>{ ran=true; sp.remove(); el.hidden=false; el.classList.add('show'); }); vtSafe(vt); setTimeout(()=>{ if(!ran){ ran=true; sp.remove(); el.hidden=false; el.classList.add('show'); } }, 700); vt.finished.catch(()=>{}).finally(()=>{ b.style.viewTransitionName=''; el.classList.remove('instant'); }); return; }catch(e){ el.classList.remove('instant'); }
+  }
+  el.hidden=false; requestAnimationFrame(()=>el.classList.add('show'));
+}
 // ---------- 啟動畫面 ----------
 function hideSplash(){ const s=$('splash'); if(!s) return; s.classList.add('out'); setTimeout(()=>s.remove(), 500); }
 
 // ---------- 初始化 ----------
-applyLook(); document.body.dataset.view=view; syncTabs(); renderMinibar(); renderInstallbar();
-setTimeout(()=>{ moveTabInd(); hideSplash(); }, RM.matches?0:420);
+applyLook(); document.body.dataset.view=view; syncTabs(); renderMinibar(); renderInstallbar(); setupReveal(); odometer($('ringKcal'), dayTotals(currentDate).kcal);
+setTimeout(()=>{ moveTabInd(); if(needOnboarding()) startOnboarding(); hideSplash(); }, RM.matches?0:520);
 addEventListener('pageshow', ()=>setTimeout(hideSplash, 600));
 
 </script>
