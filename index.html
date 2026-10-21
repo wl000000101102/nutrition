@@ -598,7 +598,7 @@
 <!-- 運動 -->
 <div class="modal" id="exModal"><div class="dialog" role="dialog" aria-modal="true" style="max-width:540px">
   <h2>🏋️ 記錄運動</h2>
-  <div class="segc" id="exMode"><button data-v="met" class="on">依運動種類</button><button data-v="watch">手錶數值</button><button data-v="steps">步數</button></div>
+  <div class="segc" id="exMode"><button data-v="met" class="on">依運動種類</button><button data-v="watch">手錶數值</button><button data-v="steps">步數</button><button data-v="treadmill">跑步機</button></div>
   <div class="fields" id="exFields"></div>
   <div class="hint" id="exPreview"></div>
   <div class="chips" id="exPresets" style="margin-top:8px"></div>
@@ -762,18 +762,21 @@ const MET = [
 ];
 const EX_TIPS = {liftlite:'輕鬆：機械式為主、組間休息 2–3 分以上或邊滑手機。', lift:'一般：8–15 下、組間休息 1–2 分，大多數人的重訓都是這種。', liftx:'高強度：大重量複合動作或休息 1 分以內、全程心跳偏高會喘。休息很長請改選一般。', circuit:'循環／超級組：動作之間幾乎不休息，搭配有氧動作。', hiit:'高強度間歇：時間填含恢復段的總時間。'};
 const EX_GROUPS = ['肌力','有氧','球類','伸展'];
-const exLabelType = k => k==='steps' ? '走路（步數）' : (METMAP[k]?.[1]||k);
-const exIconType = k => k==='steps' ? '👣' : (METMAP[k]?.[4] || (METMAP[k]?.[3] ? '🏋️' : '🏃'));
-const exLabel = e => e.type==='steps' ? `走路 ${nf(e.steps||0)} 步` : exLabelType(e.type);
+const exLabelType = k => k==='steps' ? '走路（步數）' : k==='treadmill' ? '跑步機' : (METMAP[k]?.[1]||k);
+const exIconType = k => k==='steps' ? '👣' : k==='treadmill' ? '🏃‍♀️' : (METMAP[k]?.[4] || (METMAP[k]?.[3] ? '🏋️' : '🏃'));
+const exLabel = e => e.type==='steps' ? `走路 ${nf(e.steps||0)} 步` : e.type==='treadmill' ? `跑步機 ${num(e.speed||0)} km/h · 坡度 ${num(e.grade||0)}%` : exLabelType(e.type);
+// 跑步機 MET：ACSM 代謝公式。走路（≤6 km/h）VO2 = 3.5 + 0.1v + 1.8v·坡度；跑步（≥8 km/h）VO2 = 3.5 + 0.2v + 0.9v·坡度（v = m/min）；6–8 km/h 線性內插。MET = VO2 / 3.5。
+function treadmillMET(speedKmh, gradePct){ const v=Math.max(0,+speedKmh||0)*1000/60, g=Math.max(0,+gradePct||0)/100; const walk=3.5+0.1*v+1.8*v*g, run=3.5+0.2*v+0.9*v*g; const k=clamp((speedKmh-6)/2,0,1); return (walk*(1-k)+run*k)/3.5; }
+const exMET = e => e.type==='treadmill' ? treadmillMET(e.speed,e.grade) : (METMAP[e.type]?.[2]||0);
 const exIcon = e => exIconType(e.type);
-function exGross(e){ const W=+state.profile.weight||65; if(e.kcal>0) return Math.round(e.kcal); const m=METMAP[e.type]; return m ? Math.round(m[2]*3.5*W/200*e.min) : 0; }
+function exGross(e){ const W=+state.profile.weight||65; if(e.kcal>0) return Math.round(e.kcal); const m=exMET(e); return m ? Math.round(m*3.5*W/200*e.min) : 0; }
 function exDayStats(d){ const L=state.exercise[d]||[]; let st=0,ca=0,min=0,steps=0; for(const e of L){ const n=exNet(e); if(METMAP[e.type]?.[3]) st+=n; else ca+=n; min+=e.min; steps+=e.steps||0; } return {n:L.length, st, ca, net:st+ca, min, steps}; }
 const METMAP = Object.fromEntries(MET.map(m=>[m[0],m]));
 function exNet(e){
   const W = +state.profile.weight || 65;
   if(e.kcal>0){ const c=calcProfile(state.profile); const bmr=c?c.bmr:1600; return Math.max(0, Math.round(e.kcal - bmr/1440*e.min)); }
-  const m = METMAP[e.type]; if(!m) return 0;
-  return Math.max(0, Math.round((m[2]-1)*3.5*W/200*e.min));
+  const m = exMET(e); if(!m) return 0;
+  return Math.max(0, Math.round((m-1)*3.5*W/200*e.min));
 }
 function eatBackRatio(){ return state.eatBack===null ? (EAT_AUTO[state.profile.activity] ?? .5) : +state.eatBack; }
 function exerciseExtra(date){
@@ -1762,33 +1765,35 @@ function renderDataPane(){
 
 // ---------- 運動 ----------
 let exMode='met';
-const EX_PRESETS=[['走路 1 萬步','steps',null,10000],['重訓 60 分','met','lift',60],['慢跑 30 分','met','jog',30],['籃球 60 分','met','bball',60],['羽球 60 分','met','badminton',60],['快走 30 分','met','fastwalk',30]];
+const EX_PRESETS=[['走路 1 萬步','steps',null,10000],['重訓 60 分','met','lift',60],['慢跑 30 分','met','jog',30],['籃球 60 分','met','bball',60],['羽球 60 分','met','badminton',60],['快走 30 分','met','fastwalk',30],['跑步機 30 分','treadmill',null,30]];
 function openExModal(preset){
-  exMode = preset && preset.type==='steps' ? 'steps' : 'met'; renderExFields(preset); renderExList(); renderExEst(); $('exModal').classList.add('open');
+  exMode = preset && preset.type==='steps' ? 'steps' : preset && preset.type==='treadmill' ? 'treadmill' : 'met'; renderExFields(preset); renderExList(); renderExEst(); $('exModal').classList.add('open');
 }
 function renderExFields(preset){
   $('exMode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===exMode)); const f=$('exFields');
   const sel=`<label>種類<select id="exType">${EX_GROUPS.map(g=>`<optgroup label="${g}">${MET.filter(m=>m[5]===g).map(m=>`<option value="${m[0]}">${m[4]} ${m[1]}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
   if(exMode==='met') f.innerHTML=`<div class="row">${sel}<label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30" inputmode="numeric"></label></div>`;
   else if(exMode==='watch') f.innerHTML=`<div class="row">${sel}<label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30" inputmode="numeric"></label></div><label>手錶顯示的消耗（kcal）<input id="exKcal" type="number" min="1" step="1" inputmode="numeric" placeholder="例：350"></label><div class="hint">手錶數值多半是「總消耗」，會扣掉同時段的基礎代謝，得到真正多燒的「淨消耗」。</div>`;
+  else if(exMode==='treadmill') f.innerHTML=`<div class="row"><label>速度（km/h）<input id="exSpeed" type="number" min="0.5" max="25" step="0.1" value="6" inputmode="decimal"></label><label>坡度（%）<input id="exGrade" type="number" min="0" max="30" step="0.5" value="0" inputmode="decimal"></label><label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30" inputmode="numeric"></label></div><div class="hint">依 ACSM 代謝公式以速度、坡度與體重估算；速度 6 km/h 以下視為走路、8 km/h 以上視為跑步。若手錶有顯示消耗，可改用「手錶數值」。</div>`;
   else f.innerHTML=`<label>步數<input id="exSteps" type="number" min="100" step="100" inputmode="numeric" placeholder="例：10000"></label><div class="hint">以每 100 步約 1 分鐘、每步約 0.04 kcal（依體重調整）估算。若已記錄「走路」，不要重複加。</div>`;
-  if(preset){ if(preset.type==='steps'){ $('exSteps').value=preset.steps||10000; } else { $('exType').value=preset.type; $('exMin').value=preset.min||30; } }
+  if(preset){ if(preset.type==='steps'){ $('exSteps').value=preset.steps||10000; } else if(preset.type==='treadmill'){ $('exMin').value=preset.min||30; if(preset.speed!=null) $('exSpeed').value=preset.speed; if(preset.grade!=null) $('exGrade').value=preset.grade; } else { $('exType').value=preset.type; $('exMin').value=preset.min||30; } }
   f.querySelectorAll('input,select').forEach(i=>i.addEventListener('input', exPreview));
-  $('exPresets').innerHTML = EX_PRESETS.map((p,i)=>`<button class="chip" data-i="${i}">${p[1]==='steps'?'👣':(METMAP[p[2]]?.[4]||'')} ${p[0]}</button>`).join('');
-  $('exPresets').querySelectorAll('button').forEach(b=>b.onclick=()=>{ const p=EX_PRESETS[+b.dataset.i]; exMode=p[1]; renderExFields(p[1]==='steps'?{type:'steps',steps:p[3]}:{type:p[2],min:p[3]}); });
+  $('exPresets').innerHTML = EX_PRESETS.map((p,i)=>`<button class="chip" data-i="${i}">${p[1]==='steps'?'👣':p[1]==='treadmill'?'🏃‍♀️':(METMAP[p[2]]?.[4]||'')} ${p[0]}</button>`).join('');
+  $('exPresets').querySelectorAll('button').forEach(b=>b.onclick=()=>{ const p=EX_PRESETS[+b.dataset.i]; exMode=p[1]; renderExFields(p[1]==='steps'?{type:'steps',steps:p[3]}:p[1]==='treadmill'?{type:'treadmill',min:p[3]}:{type:p[2],min:p[3]}); });
   exPreview();
 }
 $('exMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{ exMode=b.dataset.v; renderExFields(); });
 function exDraft(){
   if(exMode==='steps'){ const st=+($('exSteps')?.value||0); if(!(st>0)) return null; const W=+state.profile.weight||65; return {type:'steps', steps:Math.round(st), min:Math.max(1,Math.round(st/100)), kcal:Math.round(st*W*0.00057)}; }
+  if(exMode==='treadmill'){ const speed=+($('exSpeed')?.value||0), grade=+($('exGrade')?.value||0), min=+($('exMin')?.value||0); if(!(speed>0)||!(min>0)||grade<0) return null; return {type:'treadmill', speed:Math.round(speed*10)/10, grade:Math.round(grade*10)/10, min, kcal:0}; }
   const type=$('exType')?.value, min=+($('exMin')?.value||0); if(!type||!(min>0)) return null;
   const kcal = exMode==='watch' ? +($('exKcal')?.value||0) : 0; if(exMode==='watch' && !(kcal>0)) return null;
   return {type, min, kcal};
 }
 function exPreview(){
-  const e=exDraft(); const box=$('exPreview'); if(!e){ box.textContent = exMode==='watch' ? '輸入時間與手錶顯示的消耗。' : exMode==='steps' ? '輸入今天的步數。' : '選擇運動種類與時間。'; return; }
+  const e=exDraft(); const box=$('exPreview'); if(!e){ box.textContent = exMode==='watch' ? '輸入時間與手錶顯示的消耗。' : exMode==='steps' ? '輸入今天的步數。' : exMode==='treadmill' ? '輸入速度、坡度與時間。' : '選擇運動種類與時間。'; return; }
   const net=exNet(e), gross=exGross(e), r=eatBackRatio();
-  box.innerHTML=`${exMode==='steps'?`約 ${e.min} 分鐘 · `:''}總消耗約 <b>${nf(gross)}</b> kcal，扣掉同時段基礎代謝後，淨消耗 <b style="color:var(--violet)">${nf(net)}</b> kcal${T('kcal')?` · 回補 ${Math.round(r*100)}% → 今日目標 <b>+${nf(Math.round(net*r))}</b> kcal`:''}${state.profile.weight?'':' · 未設定體重，以 65 kg 估算'}` + (EX_TIPS[e.type]?`<div class="sgmsg warn" style="margin-top:8px">${METMAP[e.type][4]} ${EX_TIPS[e.type]}<br>⏱ 時間請填「從開始到結束」的總時間，組間休息算在內：MET 值本身就是含正常休息的平均。</div>`:(exMode!=='steps'?`<div class="hint" style="margin-top:6px">⏱ 時間填整段運動的總時間（含中途短暫休息）。</div>`:''));
+  box.innerHTML=`${exMode==='steps'?`約 ${e.min} 分鐘 · `:''}${exMode==='treadmill'?`約 ${exMET(e).toFixed(1)} MET · 距離 ${num(e.speed*e.min/60)} km · `:''}總消耗約 <b>${nf(gross)}</b> kcal，扣掉同時段基礎代謝後，淨消耗 <b style="color:var(--violet)">${nf(net)}</b> kcal${T('kcal')?` · 回補 ${Math.round(r*100)}% → 今日目標 <b>+${nf(Math.round(net*r))}</b> kcal`:''}${state.profile.weight?'':' · 未設定體重，以 65 kg 估算'}` + (EX_TIPS[e.type]?`<div class="sgmsg warn" style="margin-top:8px">${METMAP[e.type][4]} ${EX_TIPS[e.type]}<br>⏱ 時間請填「從開始到結束」的總時間，組間休息算在內：MET 值本身就是含正常休息的平均。</div>`:(exMode!=='steps'?`<div class="hint" style="margin-top:6px">⏱ 時間填整段運動的總時間（含中途短暫休息）。</div>`:''));
 }
 function renderExEst(){
   const Wkg=+state.profile.weight||65; const est=MET.map(m=>[m[0],m[1],Math.round((m[2]-1)*3.5*Wkg/200*30),m[3]]).sort((a,b)=>b[2]-a[2]);
@@ -1797,7 +1802,7 @@ function renderExEst(){
 }
 $('exEst').querySelector('h3').onclick=()=>$('exEst').classList.toggle('closed');
 function renderExList(){ const list=state.exercise[currentDate]||[]; $('exList').innerHTML=list.length?`<div class="hint" style="margin:0 0 4px">${currentDate===todayStr()?'今天':mdw(currentDate)}已記錄</div>`+list.map(e=>`<div class="exi"><span class="ic">${exIcon(e)}</span><div class="n"><div>${exLabel(e)}</div><small>${e.min} 分 · 淨消耗 ${nf(exNet(e))} kcal${e.kcal&&e.type!=='steps'?'（手錶）':''}</small></div><b>−${nf(exNet(e))}</b><button class="del" data-id="${e.id}">✕</button></div>`).join(''):''; $('exList').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ state.exercise[currentDate]=list.filter(x=>x.id!==b.dataset.id); if(!state.exercise[currentDate].length) delete state.exercise[currentDate]; save(); renderExList(); renderToday(); }); }
-$('exAdd').onclick=()=>{ const e=exDraft(); if(!e){ toast(exMode==='steps'?'請輸入步數':exMode==='watch'?'請輸入時間與手錶消耗':'請輸入運動時間',{level:'warn'}); return; } e.id=uid(); e.t=Date.now(); (state.exercise[currentDate]=state.exercise[currentDate]||[]).push(e); save(); renderExList(); renderToday(); checkBadges(false); const pk=$('plusk'); if(pk){ pk.classList.add('pop'); } toast(`已記錄：${exLabel(e)} · 淨消耗 ${nf(exNet(e))} kcal`); feedback('add'); if(exMode==='steps'){ $('exSteps').value=''; } exPreview(); };
+$('exAdd').onclick=()=>{ const e=exDraft(); if(!e){ toast(exMode==='steps'?'請輸入步數':exMode==='watch'?'請輸入時間與手錶消耗':exMode==='treadmill'?'請輸入速度、坡度與時間':'請輸入運動時間',{level:'warn'}); return; } e.id=uid(); e.t=Date.now(); (state.exercise[currentDate]=state.exercise[currentDate]||[]).push(e); save(); renderExList(); renderToday(); checkBadges(false); const pk=$('plusk'); if(pk){ pk.classList.add('pop'); } toast(`已記錄：${exLabel(e)} · 淨消耗 ${nf(exNet(e))} kcal`); feedback('add'); if(exMode==='steps'){ $('exSteps').value=''; } exPreview(); };
 
 // ---------- 主題 ----------
 function applyTheme(){ const t=fx.theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):fx.theme; document.documentElement.dataset.theme=t; $('btnTheme').textContent=fx.theme==='auto'?'🌗':fx.theme==='dark'?'🌙':'☀️'; $('btnTheme').title='主題：'+(fx.theme==='auto'?'跟隨系統':fx.theme==='dark'?'深色':'淺色'); document.querySelector('meta[name=theme-color]').content=cssVar('--bg'); }
@@ -1831,7 +1836,7 @@ function csvEsc(v){ v=String(v??''); return /[",\n]/.test(v)?'"'+v.replace(/"/g,
 function exportCSV(mode, days){
   const from=days?addDays(todayStr(),-(days-1)):'0000'; const rows=[];
   if(mode==='detail'){ rows.push(['日期','星期','時間','餐別','產品','每份說明','份數',...NUTRIENTS.map(n=>`${n.label}(${n.unit})`)]); Object.keys(state.logs).filter(d=>d>=from).sort().forEach(d=>state.logs[d].forEach(e=>rows.push([d,WEEK[parseD(d).getDay()],e.t?new Date(e.t).toTimeString().slice(0,5):'',SLOT_NAME[e.slot]||'',e.name,e.serving||'',e.qty,...NUTRIENTS.map(n=>num((e.n[n.key]||0)*e.qty))]))); }
-  else if(mode==='ex'){ rows.push(['日期','星期','時間','種類','分鐘','步數','手錶kcal','總消耗kcal','淨消耗kcal']); Object.keys(state.exercise).filter(d=>d>=from).sort().forEach(d=>state.exercise[d].forEach(e=>rows.push([d,WEEK[parseD(d).getDay()],e.t?new Date(e.t).toTimeString().slice(0,5):'',exLabelType(e.type),e.min,e.steps||'',e.type!=='steps'&&e.kcal?e.kcal:'',exGross(e),exNet(e)]))); }
+  else if(mode==='ex'){ rows.push(['日期','星期','時間','種類','分鐘','步數','速度km/h','坡度%','手錶kcal','總消耗kcal','淨消耗kcal']); Object.keys(state.exercise).filter(d=>d>=from).sort().forEach(d=>state.exercise[d].forEach(e=>rows.push([d,WEEK[parseD(d).getDay()],e.t?new Date(e.t).toTimeString().slice(0,5):'',exLabelType(e.type),e.min,e.steps||'',e.speed??'',e.grade??'',e.type!=='steps'&&e.kcal?e.kcal:'',exGross(e),exNet(e)]))); }
   else { rows.push(['日期','星期','項目數','總熱量','目標熱量','差額','蛋白質','脂肪','碳水化合物','飽和脂肪','反式脂肪','糖','鈉','運動分鐘','運動淨消耗','運動回補','飲水ml','睡眠h','睡眠品質','心情','筆記']); const dates=new Set([...Object.keys(state.logs),...Object.keys(state.exercise),...Object.keys(state.daily)].filter(d=>d>=from)); [...dates].sort().forEach(d=>{ const t=dayTotals(d), K=kcalTargetFor(d), es=exDayStats(d); rows.push([d,WEEK[parseD(d).getDay()],(state.logs[d]||[]).length,num(t.kcal),K,num(t.kcal-K),num(t.protein),num(t.fat),num(t.carb),num(t.satfat),num(t.transfat),num(t.sugar),num(t.sodium),es.min,nf(es.net).replace(',',''),T('kcal')?exerciseExtra(d):0,dayStatus(d).water||'',dayStatus(d).sleep||'',dayStatus(d).sleepQ||'',dayStatus(d).mood||'',dayStatus(d).note||'']); }); }
   const csv='﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\r\n'); download(new Blob([csv],{type:'text/csv;charset=utf-8'}),`營養記錄_${{detail:'明細',daily:'彙總',ex:'運動明細'}[mode]}_${days?'近'+days+'天':'全部'}_${todayStr()}.csv`);
   if(!days) markBackup(); toast('已匯出 CSV');
