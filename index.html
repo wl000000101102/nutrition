@@ -736,9 +736,17 @@ let currentDate = todayStr();
 let currentSlot = slotOfTime(Date.now());
 
 // ---------- 運動與動態目標 ----------
-const MET = [['walk','走路',3.0],['fastwalk','快走',4.3],['jog','慢跑',8.3],['run','跑步',9.8],['bike','單車',6.8],['swim','游泳',5.8],['lift','重訓（一般）',3.5,true],['liftx','重訓（高強度）',6.0,true],['hiit','HIIT',8.0,true],['yoga','瑜珈',2.5],['pilates','皮拉提斯／伸展',3.0],['bball','籃球',6.5],['badminton','羽球',5.5],['tennis','網球',7.3],['pingpong','桌球',4.0],['rope','跳繩',11.0,true],['spin','飛輪',7.0],['elliptical','橢圓機',5.0],['rowing','划船機',7.0,true],['stairs','爬樓梯',8.0],['hike','登山健行',6.0],['dance','舞蹈／有氧',5.0]];
+// [id, 名稱, MET, 是否肌力, 圖示, 分組]
+const MET = [
+  ['liftlite','重訓・輕鬆',3.0,true,'🏋️','肌力'],['lift','重訓・一般',3.5,true,'🏋️‍♂️','肌力'],['liftx','重訓・高強度',6.0,true,'🔥','肌力'],['circuit','循環／超級組',8.0,true,'⚡','肌力'],
+  ['walk','走路',3.0,false,'🚶','有氧'],['fastwalk','快走',4.3,false,'🚶‍♂️','有氧'],['jog','慢跑',8.3,false,'🏃','有氧'],['run','跑步',9.8,false,'🏃‍♂️','有氧'],['hiit','HIIT 間歇',8.0,false,'💥','有氧'],['bike','單車',6.8,false,'🚴','有氧'],['spin','飛輪',7.0,false,'🚴‍♀️','有氧'],['elliptical','橢圓機',5.0,false,'🎿','有氧'],['rowing','划船機',7.0,false,'🚣','有氧'],['rope','跳繩',11.0,false,'🪢','有氧'],['stairs','爬樓梯',8.0,false,'🪜','有氧'],['hike','登山健行',6.0,false,'🥾','有氧'],['swim','游泳',5.8,false,'🏊','有氧'],['dance','舞蹈／有氧課',5.0,false,'💃','有氧'],
+  ['bball','籃球',6.5,false,'🏀','球類'],['badminton','羽球',5.5,false,'🏸','球類'],['tennis','網球',7.3,false,'🎾','球類'],['pingpong','桌球',4.0,false,'🏓','球類'],
+  ['yoga','瑜珈',2.5,false,'🧘','伸展'],['pilates','皮拉提斯／伸展',3.0,false,'🤸','伸展'],
+];
+const EX_TIPS = {liftlite:'輕鬆：機械式為主、組間休息 2–3 分以上或邊滑手機。', lift:'一般：8–15 下、組間休息 1–2 分，大多數人的重訓都是這種。', liftx:'高強度：大重量複合動作或休息 1 分以內、全程心跳偏高會喘。休息很長請改選一般。', circuit:'循環／超級組：動作之間幾乎不休息，搭配有氧動作。', hiit:'高強度間歇：時間填含恢復段的總時間。'};
+const EX_GROUPS = ['肌力','有氧','球類','伸展'];
 const exLabelType = k => k==='steps' ? '走路（步數）' : (METMAP[k]?.[1]||k);
-const exIconType = k => k==='steps' ? '🚶' : (METMAP[k]?.[3] ? '🏋' : '🏃');
+const exIconType = k => k==='steps' ? '👣' : (METMAP[k]?.[4] || (METMAP[k]?.[3] ? '🏋️' : '🏃'));
 const exLabel = e => e.type==='steps' ? `走路 ${nf(e.steps||0)} 步` : exLabelType(e.type);
 const exIcon = e => exIconType(e.type);
 function exGross(e){ const W=+state.profile.weight||65; if(e.kcal>0) return Math.round(e.kcal); const m=METMAP[e.type]; return m ? Math.round(m[2]*3.5*W/200*e.min) : 0; }
@@ -1580,7 +1588,7 @@ function renderExerciseStats(body){
     <div class="kpis" style="grid-template-columns:1fr 1fr;margin-top:12px">${kpiBox('本週肌力',`${sDays} / 2`,sDays>=2?'次 ✔':'次')}${kpiBox('本週有氧',`${cMin} / 150`,cMin>=150?'分 ✔':'分')}</div>
     ${types.length?`<div class="hint" style="margin:10px 0 4px"><b>依種類</b>（${N} 日）</div>`+types.map(t=>`<div class="rank"><div class="th">${exIconType(t.k)}</div><div class="n">${exLabelType(t.k)}<small>${t.count} 次 · ${t.min} 分${t.steps?` · ${nf(t.steps)} 步`:''}</small></div><div class="bar"><i style="width:${(t.net/maxT*100).toFixed(1)}%;background:${METMAP[t.k]?.[3]?'var(--violet)':'var(--accent)'}"></i></div><div class="v"><b>${nf(t.net)} kcal</b><small>${totNet?Math.round(t.net/totNet*100):0}% · 每次 ${nf(t.net/t.count)}</small></div></div>`).join(''):'<div class="empty">此區間沒有運動記錄，點上方「＋ 記錄運動」開始。</div>'}
     <div class="hint" style="margin:14px 0 4px"><b>估算：各種運動做 30 分鐘的淨消耗</b>（體重 ${Wkg} kg${state.profile.weight?'':'，未設定體重以 65 kg 估算'}）· 點一下即可記錄</div>
-    <div class="estgrid">${est.map(e=>`<div class="estc" data-t="${e[0]}"><span>${e[1]}${e[3]?' 💪':''}</span><b>${e[2]}</b><small>kcal / 30 分</small></div>`).join('')}</div>
+    <div class="estgrid">${est.map(e=>`<div class="estc" data-t="${e[0]}"><span>${METMAP[e[0]][4]} ${e[1]}</span><b>${e[2]}</b><small>kcal / 30 分</small></div>`).join('')}</div>
     <div class="hint">淨消耗 = 運動總消耗 − 同時段的基礎代謝，也就是「比不運動多燒掉的」。依回補比例（目前 ${Math.round(eatBackRatio()*100)}%）加進當日熱量目標，熱量盈虧統計已一併計入。</div>`;
   bindSeg('exR', v=>{ state.ui.exRange=+v; save(); renderStats(); });
   $('exStatAdd').onclick=()=>{ $('statsModal').classList.remove('open'); setTimeout(openExModal, 150); };
@@ -1680,13 +1688,13 @@ function openExModal(preset){
 }
 function renderExFields(preset){
   $('exMode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===exMode)); const f=$('exFields');
-  const sel=`<label>種類<select id="exType">${MET.map(m=>`<option value="${m[0]}">${m[1]}${m[3]?'（肌力）':''}</option>`).join('')}</select></label>`;
+  const sel=`<label>種類<select id="exType">${EX_GROUPS.map(g=>`<optgroup label="${g}">${MET.filter(m=>m[5]===g).map(m=>`<option value="${m[0]}">${m[4]} ${m[1]}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
   if(exMode==='met') f.innerHTML=`<div class="row">${sel}<label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30" inputmode="numeric"></label></div>`;
   else if(exMode==='watch') f.innerHTML=`<div class="row">${sel}<label>時間（分鐘）<input id="exMin" type="number" min="1" max="600" step="1" value="30" inputmode="numeric"></label></div><label>手錶顯示的消耗（kcal）<input id="exKcal" type="number" min="1" step="1" inputmode="numeric" placeholder="例：350"></label><div class="hint">手錶數值多半是「總消耗」，會扣掉同時段的基礎代謝，得到真正多燒的「淨消耗」。</div>`;
   else f.innerHTML=`<label>步數<input id="exSteps" type="number" min="100" step="100" inputmode="numeric" placeholder="例：10000"></label><div class="hint">以每 100 步約 1 分鐘、每步約 0.04 kcal（依體重調整）估算。若已記錄「走路」，不要重複加。</div>`;
   if(preset){ if(preset.type==='steps'){ $('exSteps').value=preset.steps||10000; } else { $('exType').value=preset.type; $('exMin').value=preset.min||30; } }
   f.querySelectorAll('input,select').forEach(i=>i.addEventListener('input', exPreview));
-  $('exPresets').innerHTML = EX_PRESETS.map((p,i)=>`<button class="chip" data-i="${i}">${p[0]}</button>`).join('');
+  $('exPresets').innerHTML = EX_PRESETS.map((p,i)=>`<button class="chip" data-i="${i}">${p[1]==='steps'?'👣':(METMAP[p[2]]?.[4]||'')} ${p[0]}</button>`).join('');
   $('exPresets').querySelectorAll('button').forEach(b=>b.onclick=()=>{ const p=EX_PRESETS[+b.dataset.i]; exMode=p[1]; renderExFields(p[1]==='steps'?{type:'steps',steps:p[3]}:{type:p[2],min:p[3]}); });
   exPreview();
 }
@@ -1700,11 +1708,11 @@ function exDraft(){
 function exPreview(){
   const e=exDraft(); const box=$('exPreview'); if(!e){ box.textContent = exMode==='watch' ? '輸入時間與手錶顯示的消耗。' : exMode==='steps' ? '輸入今天的步數。' : '選擇運動種類與時間。'; return; }
   const net=exNet(e), gross=exGross(e), r=eatBackRatio();
-  box.innerHTML=`${exMode==='steps'?`約 ${e.min} 分鐘 · `:''}總消耗約 <b>${nf(gross)}</b> kcal，扣掉同時段基礎代謝後，淨消耗 <b style="color:var(--violet)">${nf(net)}</b> kcal${T('kcal')?` · 回補 ${Math.round(r*100)}% → 今日目標 <b>+${nf(Math.round(net*r))}</b> kcal`:''}${state.profile.weight?'':' · 未設定體重，以 65 kg 估算'}`;
+  box.innerHTML=`${exMode==='steps'?`約 ${e.min} 分鐘 · `:''}總消耗約 <b>${nf(gross)}</b> kcal，扣掉同時段基礎代謝後，淨消耗 <b style="color:var(--violet)">${nf(net)}</b> kcal${T('kcal')?` · 回補 ${Math.round(r*100)}% → 今日目標 <b>+${nf(Math.round(net*r))}</b> kcal`:''}${state.profile.weight?'':' · 未設定體重，以 65 kg 估算'}` + (EX_TIPS[e.type]?`<div class="sgmsg warn" style="margin-top:8px">${METMAP[e.type][4]} ${EX_TIPS[e.type]}<br>⏱ 時間請填「從開始到結束」的總時間，組間休息算在內：MET 值本身就是含正常休息的平均。</div>`:(exMode!=='steps'?`<div class="hint" style="margin-top:6px">⏱ 時間填整段運動的總時間（含中途短暫休息）。</div>`:''));
 }
 function renderExEst(){
   const Wkg=+state.profile.weight||65; const est=MET.map(m=>[m[0],m[1],Math.round((m[2]-1)*3.5*Wkg/200*30),m[3]]).sort((a,b)=>b[2]-a[2]);
-  $('exEstBox').innerHTML=`<div class="estgrid">${est.map(e=>`<div class="estc" data-t="${e[0]}"><span>${e[1]}${e[3]?' 💪':''}</span><b>${e[2]}</b><small>kcal</small></div>`).join('')}</div><div class="hint">以體重 ${Wkg} kg 計；點一下帶入 30 分鐘。</div>`;
+  $('exEstBox').innerHTML=`<div class="estgrid">${est.map(e=>`<div class="estc" data-t="${e[0]}"><span>${METMAP[e[0]][4]} ${e[1]}</span><b>${e[2]}</b><small>kcal</small></div>`).join('')}</div><div class="hint">以體重 ${Wkg} kg 計；點一下帶入 30 分鐘。</div>`;
   $('exEstBox').querySelectorAll('.estc').forEach(el=>el.onclick=()=>{ exMode='met'; renderExFields({type:el.dataset.t,min:30}); });
 }
 $('exEst').querySelector('h3').onclick=()=>$('exEst').classList.toggle('closed');
