@@ -1,0 +1,30 @@
+{
+  "name": "每日營養攝取記錄",
+  "short_name": "營養記錄",
+  "description": "點一下產品就記錄今日攝取，內建減脂／增肌目標、統計分析與成就系統。",
+  "lang": "zh-Hant",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1f9d6a",
+  "theme_color": "#1f9d6a",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

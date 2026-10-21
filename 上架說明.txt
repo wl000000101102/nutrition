@@ -1,0 +1,52 @@
+把「營養記錄」加到 iPhone 主畫面的方法
+==========================================
+
+iPhone 只能把「網址」加到主畫面，直接開 HTML 檔案不行。
+所以要先把這個 webapp 資料夾放到一個網站空間（免費即可），
+再用 Safari 開啟網址，就能加到主畫面、全螢幕、離線使用。
+
+這個資料夾裡的東西
+------------------
+  index.html              主程式（與 ../營養記錄.html 相同，多了 App 設定）
+  manifest.webmanifest    App 名稱、圖示、顏色
+  sw.js                   離線快取
+  icons/                  App 圖示（自動產生）
+整個資料夾一起上傳，不要只上傳 index.html。
+
+方法 A：GitHub Pages（免費，最常用）
+-----------------------------------
+1. 到 https://github.com 註冊或登入。
+2. 右上角「+」→「New repository」，名稱例如 nutrition，Public，建立。
+3. 進入倉庫 →「Add file」→「Upload files」→ 把 webapp 資料夾裡的全部檔案
+   （index.html、manifest.webmanifest、sw.js、icons 資料夾）拖進去 → Commit changes。
+4. 倉庫「Settings」→ 左側「Pages」→ Branch 選 main、資料夾 /(root) → Save。
+5. 等 1～2 分鐘，網址會是 https://<你的帳號>.github.io/nutrition/
+6. 之後每次更新：重新建置後把新檔案再上傳覆蓋即可。
+
+方法 B：Netlify Drop（免費，拖曳即可）
+------------------------------------
+1. 開 https://app.netlify.com/drop（需註冊 Netlify 帳號）。
+2. 把整個 webapp 資料夾拖進頁面，幾秒後給你一個 https://xxx.netlify.app 網址。
+
+方法 C：Cloudflare Pages
+------------------------
+Workers & Pages → Create → Upload assets → 上傳 webapp 資料夾。
+
+在 iPhone 上加到主畫面
+----------------------
+1. 用「Safari」開啟網址（LINE、FB、Chrome 的內建瀏覽器都不行）。
+2. 點下方工具列的「分享」（方框加向上箭頭）。
+3. 往下捲，點「加入主畫面」。
+4. 右上角「新增」。
+主畫面會出現「營養記錄」圖示，從圖示開啟就是全螢幕 App，之後沒有網路也能用。
+
+Android：用 Chrome 開啟網址 → 右上角 ⋮ →「安裝應用程式」或「加到主畫面」。
+
+注意事項
+--------
+- 資料存在裝置裡（localStorage），不會上傳到任何地方。
+- 主畫面 App 和 Safari 是「分開」的儲存空間。如果你已經在 Safari 或電腦上
+  記錄過，請先「匯出」JSON 備份，再到 App 裡「匯入」。
+- 換手機或清除瀏覽資料前，記得先匯出備份。
+- 更新版本：重新建置（原始碼/build.py）後上傳新檔案；App 開啟時會跳出
+  「有新版本可用」→ 按「更新」即可。
