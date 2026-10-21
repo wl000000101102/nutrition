@@ -511,6 +511,7 @@
       </div>
     </div>
   </aside>
+  <div class="hint" id="verTag" style="grid-column:1/-1;text-align:center;font-size:10.5px;opacity:.6"></div>
 </main>
 
 <div class="minibar" id="minibar" role="button" title="查看今日攝取"><svg viewBox="0 0 28 28" id="miniRing"><circle cx="14" cy="14" r="11" class="t"/><circle cx="14" cy="14" r="11" class="a" id="miniArc" stroke-dasharray="0 70"/></svg><div class="mt"><b id="miniMain">—</b><small id="miniSub"></small></div><span class="chev">›</span></div>
@@ -951,7 +952,7 @@ function renderProducts(){
       if(suppressClick){ suppressClick=false; return; }
       if(e.target.classList.contains('edit')){ heroOpen(b.querySelector('.thumb'), p); return; }
       if(e.target.classList.contains('fav')){ p.fav=!p.fav; save(); e.target.classList.add('bounce'); setTimeout(renderProducts, 250); return; }
-      if(e.target.classList.contains('plus')){ openQtyPop(p, b); return; }
+      if(e.target.closest('.plus')){ e.stopPropagation(); openQtyPop(p, b); return; }
       addEntry(p, 1, {thumbEl:b.querySelector('.thumb')});
       b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
     });
@@ -992,9 +993,9 @@ $('products').addEventListener('pointerdown', e => {
 $('products').addEventListener('pointermove', e => { if(holdStart && Math.hypot(e.clientX-holdStart.x,e.clientY-holdStart.y)>10){ clearTimeout(holdTimer); e.target.closest?.('.product')?.classList.remove('holding'); } });
 
 // 份數選單
-let popTarget=null;
+let popTarget=null, popOpenedAt=0;
 function openQtyPop(p, card){
-  popTarget=p; const pop=$('qtyPop');
+  popTarget=p; popOpenedAt=Date.now(); const pop=$('qtyPop');
   let popSlot = currentSlot||'l';
   pop.innerHTML = `<div class="qname">${esc(p.name)} · 每份 ${num(p.n.kcal)} kcal</div>
     <div class="qlbl">加入哪一餐</div><div class="qrow qslots">${SLOTS.map(([k,l])=>`<button class="chip ${popSlot===k?'on':''}" data-s="${k}" title="${l}">${SLOT_ICON[k]}<small>${l}</small></button>`).join('')}</div>
@@ -1013,7 +1014,7 @@ function openQtyPop(p, card){
 }
 function closeQtyPop(){ $('qtyPop').classList.remove('open'); popTarget=null; }
 document.addEventListener('pointerdown', e => { if($('qtyPop').classList.contains('open') && !e.target.closest('#qtyPop')) closeQtyPop(); if(!e.target.closest('.menu,#btnExport,#btnCopyMenu,#btnMore,#score,#scorePop')){ document.querySelectorAll('.menu.open').forEach(m=>m.classList.remove('open')); $('scorePop').classList.remove('open'); } });
-const closePopIfIdle=()=>{ if(!$('qtyPop').contains(document.activeElement)) closeQtyPop(); }; addEventListener('resize', closePopIfIdle); addEventListener('scroll', closePopIfIdle, true);
+const closePopIfIdle=()=>{ if(Date.now()-popOpenedAt<600) return; if(!$('qtyPop').contains(document.activeElement)) closeQtyPop(); }; addEventListener('resize', closePopIfIdle); addEventListener('scroll', closePopIfIdle, true);
 
 // ---------- 套餐 ----------
 const EMOJIS = ['🍳','🥪','🍱','🥗','🍜','🥤','🍎','💪'];
@@ -1945,6 +1946,8 @@ const MOBILE = matchMedia('(max-width: 980px)');
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 const STANDALONE = navigator.standalone===true || matchMedia('(display-mode: standalone)').matches;
 const HTTP = /^https?:/.test(location.protocol);
+const APP_VER='20261021-123005';
+const PAGE_T0=Date.now();
 document.documentElement.classList.toggle('standalone', STANDALONE);
 
 // ---------- 外觀偏好套用 ----------
@@ -2029,7 +2032,7 @@ function openInstallHelp(){
 // ---------- Service Worker（只在 http/https 下註冊） ----------
 if(HTTP && 'serviceWorker' in navigator){
   const reg=()=>navigator.serviceWorker.register('./sw.js').then(r=>{
-    r.addEventListener('updatefound', ()=>{ const nw=r.installing; if(!nw) return; nw.addEventListener('statechange', ()=>{ if(nw.state==='installed' && navigator.serviceWorker.controller) toast('有新版本可用', {ms:15000, action:{label:'更新', fn:()=>nw.postMessage({type:'SKIP_WAITING'})}}); }); });
+    r.addEventListener('updatefound', ()=>{ const nw=r.installing; if(!nw) return; nw.addEventListener('statechange', ()=>{ if(nw.state==='installed' && navigator.serviceWorker.controller){ if(Date.now()-PAGE_T0<8000 && !document.querySelector('.modal.open')) nw.postMessage({type:'SKIP_WAITING'}); else toast('有新版本可用', {ms:15000, action:{label:'更新', fn:()=>nw.postMessage({type:'SKIP_WAITING'})}}); } }); });
   }).catch(()=>{});
   let refreshing=false; navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(refreshing) return; refreshing=true; location.reload(); });
   if(document.readyState==='complete') reg(); else addEventListener('load', reg);
@@ -2149,7 +2152,7 @@ function startOnboarding(){
 function hideSplash(){ const s=$('splash'); if(!s) return; s.classList.add('out'); setTimeout(()=>s.remove(), 500); }
 
 // ---------- 初始化 ----------
-applyLook(); document.body.dataset.view=view; syncTabs(); renderMinibar(); renderInstallbar(); setupReveal(); odometer($('ringKcal'), dayTotals(currentDate).kcal);
+applyLook(); { const v=$('verTag'); if(v) v.textContent='版本 '+APP_VER; } document.body.dataset.view=view; syncTabs(); renderMinibar(); renderInstallbar(); setupReveal(); odometer($('ringKcal'), dayTotals(currentDate).kcal);
 setTimeout(()=>{ moveTabInd(); if(needOnboarding()) startOnboarding(); hideSplash(); }, RM.matches?0:520);
 addEventListener('pageshow', ()=>setTimeout(hideSplash, 600));
 
