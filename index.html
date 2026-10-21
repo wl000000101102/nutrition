@@ -535,6 +535,7 @@
     <div class="fields">
       <label>產品名稱 *<input id="fName" placeholder="例：無糖豆漿 400ml"></label>
       <div class="row"><label>每一份量（說明）<input id="fServing" placeholder="例：1 瓶 400 毫升"></label><label>分類<select id="fCat"></select></label></div>
+      <label>每份含水量（ml，飲品／蛋白粉沖泡水量，會計入當日飲水）<input id="fWater" type="number" step="10" min="0" inputmode="numeric" placeholder="例：350"></label>
       <input id="fCatNew" placeholder="輸入新分類名稱" hidden style="margin-top:6px">
       <div class="row">
         <label>熱量 (kcal)<input id="fkcal" type="number" step="any" min="0"></label><label>蛋白質 (g)<input id="fprotein" type="number" step="any" min="0"></label>
@@ -657,6 +658,11 @@ const CAT_ICON = {'正餐':'🍱','飲品':'🧋','點心':'🍪','水果':'🍎
 const catIcon = c => CAT_ICON[c] || '🏷️';
 function waterTarget(){ const W=+state.profile.weight; return W ? Math.max(1500, Math.round(W*35/50)*50) : 2000; }
 function dayStatus(d){ return state.daily[d] || {}; }
+// 內建產品每份含水量 (ml)：蛋白粉以 350 ml 水沖泡，飲品以容量計
+const DEFAULT_WATER = {'def-mars-milktea':350,'def-mars-oolong':350,'def-soymilk':375,'def-milksha-lime':700,'def-711-yogurt-pro':200};
+const entryWater = e => { const p=prod(e.pid); const w=p&&p.water!==undefined?p.water:e.water; return (Number(w)||0)*e.qty; };
+function foodWater(d){ return Math.round(sum((state.logs[d]||[]).map(entryWater))); }
+function waterOf(d){ return (dayStatus(d).water||0)+foodWater(d); }
 const DEFAULT_CAT = {'def-mars-milktea':'蛋白補充','def-mars-oolong':'蛋白補充','def-soymilk':'飲品','def-21plus-chicken':'正餐','def-fish-box':'正餐','def-onigiri':'正餐','def-banana':'水果','def-tea-egg':'點心','def-mcd-pork-egg':'正餐','def-mcd-hashbrown':'點心','def-711-protein':'正餐','def-milksha-lime':'飲品','def-711-pesto-toast':'點心','def-711-cajun-sandwich':'點心','def-711-sweetpotato':'主食','def-potato-boiled':'主食','def-711-potato-egg':'點心','def-711-chk-salt':'蛋白補充','def-711-chk-smoke':'蛋白補充','def-711-chk-bar':'蛋白補充','def-711-gizzard':'點心','def-711-eggwhite':'點心','def-711-oden-chk':'關東煮','def-711-oden-radish':'關東煮','def-711-oden-mush':'關東煮','def-711-oden-corn':'關東煮','def-711-oden-tofu':'關東煮','def-711-yogurt-pro':'乳製品'};
 const LS_KEY = 'nutritionTracker.v1', FX_KEY = 'nutritionTracker.fx';
 const RMQ = matchMedia('(prefers-reduced-motion: reduce)');
@@ -730,7 +736,7 @@ function normalize(s){
     if(ex){ if(!ex.imgCustom){ ex.img = d.img; ex.emoji = d.emoji; } }
     else if(!s.removedDefaults.includes(d.id)) s.products.push(JSON.parse(JSON.stringify(d)));
   }
-  for(const p of s.products){ if(p.fav===undefined) p.fav=false; if(p.cat===undefined) p.cat = DEFAULT_CAT[p.id] || ''; }
+  for(const p of s.products){ if(p.fav===undefined) p.fav=false; if(p.cat===undefined) p.cat = DEFAULT_CAT[p.id] || ''; if(p.water===undefined && DEFAULT_WATER[p.id]!==undefined && !p.waterCustom) p.water=DEFAULT_WATER[p.id]; }
   for(const d in s.logs) for(const e of s.logs[d]){ if(!e.times) e.times=[e.t||Date.now()]; if(!e.slot) e.slot = slotOfTime(e.t, d); }
   return s;
 }
@@ -938,7 +944,7 @@ function renderProducts(){
       <div class="thumb${p.img?'':' emoji'}" ${thumbStyle(p)}>${p.img?'':(p.emoji||'🍱')}
         <span class="tl">${trafficPills(p)}</span><span class="badge">${num(p.n.kcal||0)} kcal</span><span class="plus">＋</span></div>
       <div class="info"><div class="name">${esc(p.name)}</div>
-        <div class="meta"><span>${p.cat?`<span class="catic" title="${esc(p.cat)}">${catIcon(p.cat)}</span>`:''}${esc(p.serving||'每份')}</span>
+        <div class="meta"><span>${p.cat?`<span class="catic" title="${esc(p.cat)}">${catIcon(p.cat)}</span>`:''}${esc(p.serving||'每份')}${p.water?` · 💧${p.water}`:''}</span>
         <span class="pill ${p.n.kcal>0?g:'D'}" title="每 100 kcal 含 ${pd.toFixed(1)} g 蛋白質（${Math.round(Math.min(100,pd*4))}% 熱量來自蛋白）">${num(p.n.protein||0)}<span class="g">g</span> · ${g}${PDt!==null?(pd>=PDt?' ▲':' ▼'):''}</span></div></div>
       <span class="fav ${p.fav?'on':''}" title="釘選">${p.fav?'★':'☆'}</span><span class="edit" title="編輯">✎</span>`;
     b.addEventListener('click', e => {
@@ -1059,7 +1065,7 @@ function addEntry(p, qty=1, opts={}){
   const slot = date===todayStr() ? currentSlot : (currentSlot||'l');
   const ex = log.find(e => e.pid===p.id && e.slot===slot);
   if(ex){ ex.qty = Math.round((ex.qty+qty)*100)/100; ex.times.push(Date.now()); }
-  else log.push({id:uid(), pid:p.id, name:p.name, serving:p.serving, n:{...p.n}, qty, t:Date.now(), times:[Date.now()], slot});
+  else log.push({id:uid(), pid:p.id, name:p.name, serving:p.serving, n:{...p.n}, water:p.water||0, qty, t:Date.now(), times:[Date.now()], slot});
   usageBump(p.id); state.meta.entriesSinceBackup++;
   if(opts.silent) return;
   save(); pushUndo('加入 '+p.name, date, restore);
@@ -1136,16 +1142,16 @@ function sparkleAt(el, opt){ if(!el) return; const r=el.getBoundingClientRect();
 const MOODS=[['1','😫','很差'],['2','😕','不太好'],['3','😐','普通'],['4','🙂','不錯'],['5','😄','很好']];
 function setDaily(k, v){ const d=state.daily[currentDate]=state.daily[currentDate]||{}; if(v===null||v===undefined||v===''||(typeof v==='number'&&!(v>0))) delete d[k]; else d[k]=v; if(!Object.keys(d).length) delete state.daily[currentDate]; save(); }
 function renderStatus(){
-  const sec=$('secStatus'); if(!sec) return; const d=dayStatus(currentDate); const WT=waterTarget(); const w=d.water||0;
+  const sec=$('secStatus'); if(!sec) return; const d=dayStatus(currentDate); const WT=waterTarget(); const fw=foodWater(currentDate); const w=(d.water||0)+fw;
   sec.classList.toggle('closed', state.ui.statusOpen===false);
   $('statusSub').textContent=[w?`💧 ${w>=1000?(w/1000).toFixed(1)+' L':w+' ml'}`:'', d.sleep?`😴 ${d.sleep} h`:'', d.mood?MOODS[d.mood-1][1]:''].filter(Boolean).join(' · ')||'尚未記錄';
   const cups=Math.min(12,Math.ceil(WT/250));
-  let html=`<div class="st-row"><div class="st-h"><span>💧 飲水</span><b>${nf(w)} / ${nf(WT)} ml${w>=WT?' ✔':''}</b></div><div class="cups">${Array.from({length:cups},(_,i)=>{ const f=Math.max(0,Math.min(1,(w-i*250)/250)); return `<span class="cup ${f>=1?'full':''}"><i style="height:${Math.round(f*100)}%"></i></span>`; }).join('')}</div><div class="st-btns"><button class="chip" data-w="250">＋250 ml</button><button class="chip" data-w="500">＋500 ml</button><button class="chip" data-w="-250">−250</button>${w?`<button class="chip" data-w="reset">歸零</button>`:''}</div></div>`;
+  let html=`<div class="st-row"><div class="st-h"><span>💧 飲水</span><b>${nf(w)} / ${nf(WT)} ml${w>=WT?' ✔':''}</b></div><div class="cups">${Array.from({length:cups},(_,i)=>{ const f=Math.max(0,Math.min(1,(w-i*250)/250)); return `<span class="cup ${f>=1?'full':''}"><i style="height:${Math.round(f*100)}%"></i></span>`; }).join('')}</div><div class="st-btns"><button class="chip" data-w="250">＋250 ml</button><button class="chip" data-w="500">＋500 ml</button><button class="chip" data-w="-250">−250</button>${d.water?`<button class="chip" data-w="reset">歸零</button>`:''}</div>${fw?`<div class="hint" style="margin-top:4px">含飲品／蛋白粉沖泡 ${nf(fw)} ml（依記錄自動計入）${d.water?` · 另外喝水 ${nf(d.water)} ml`:''}</div>`:''}</div>`;
   html+=`<div class="st-row"><div class="st-h"><span>😴 睡眠</span><b id="sleepVal">${d.sleep?d.sleep+' 小時':'尚未記錄'}${d.sleepQ?` · 品質 ${d.sleepQ}/5`:''}</b></div><div class="st-btns"><input type="range" id="sleepRange" min="0" max="12" step="0.5" value="${d.sleep||0}" aria-label="睡眠時數"><span class="stars" id="sleepQ">${[1,2,3,4,5].map(i=>`<button data-q="${i}" class="${(d.sleepQ||0)>=i?'on':''}" title="品質 ${i}">★</button>`).join('')}</span></div><div class="hint" style="margin-top:2px">拖曳設定昨晚睡了幾小時，星星是睡眠品質。</div></div>`;
   html+=`<div class="st-row"><div class="st-h"><span>🙂 心情／精力</span><b>${d.mood?MOODS[d.mood-1][2]:'—'}</b></div><div class="moods">${MOODS.map(m=>`<button data-m="${m[0]}" class="${String(d.mood)===m[0]?'on':''}" title="${m[2]}">${m[1]}</button>`).join('')}</div></div>`;
   html+=`<div class="st-row"><div class="st-h"><span>📝 今日筆記</span></div><input id="dayNote" class="note" maxlength="120" placeholder="例：練胸日、外食聚餐、睡不好…" value="${esc(d.note||'')}"></div>`;
   $('statusBox').innerHTML=html;
-  $('statusBox').querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{ const before=dayStatus(currentDate).water||0; const v=b.dataset.w==='reset'?0:Math.max(0,before+Number(b.dataset.w)); setDaily('water', v); renderStatus(); renderQuests(); feedback(v>before?'qtyUp':'qtyDown'); if(before<WT && v>=WT){ sparkleAt($('statusBox').querySelector('.cups'),{colors:['#8ec5ff',cssVar('--blue'),'#fff']}); toast('💧 今日飲水達標！'); feedback('win'); } else if(v>before){ const c=$('statusBox').querySelectorAll('.cup')[Math.min(cups-1,Math.floor((v-1)/250))]; c&&c.classList.add('pop'); } });
+  $('statusBox').querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{ const fw=foodWater(currentDate); const before=dayStatus(currentDate).water||0; const v=b.dataset.w==='reset'?0:Math.max(0,before+Number(b.dataset.w)); setDaily('water', v); renderStatus(); renderQuests(); feedback(v>before?'qtyUp':'qtyDown'); if(before+fw<WT && v+fw>=WT){ sparkleAt($('statusBox').querySelector('.cups'),{colors:['#8ec5ff',cssVar('--blue'),'#fff']}); toast('💧 今日飲水達標！'); feedback('win'); } else if(v>before){ const c=$('statusBox').querySelectorAll('.cup')[Math.min(cups-1,Math.floor((v+fw-1)/250))]; c&&c.classList.add('pop'); } });
   const rg=$('sleepRange'); rg.addEventListener('input',()=>{ $('sleepVal').textContent=(+rg.value?rg.value+' 小時':'尚未記錄'); }); rg.addEventListener('change',()=>{ setDaily('sleep', +rg.value); renderStatus(); renderQuests(); feedback('qty'); });
   $('sleepQ').querySelectorAll('button').forEach(b=>b.onclick=()=>{ setDaily('sleepQ', +b.dataset.q); renderStatus(); feedback('qty'); });
   $('statusBox').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ setDaily('mood', +b.dataset.m); renderStatus(); const nb=$('statusBox').querySelector(`[data-m="${b.dataset.m}"]`); nb&&nb.classList.add('bounce'); sparkleAt(nb,{n:6,dist:26}); feedback('qty'); });
@@ -1216,7 +1222,7 @@ const QUESTS = [
   {id:'newFood', name:'嘗試 14 天沒吃的食物', test:ev=>{ const from=addDays(ev.date,-14); const recent=new Set(); for(const d in state.logs) if(d>=from&&d<ev.date) state.logs[d].forEach(e=>recent.add(e.pid)); const n=ev.log.filter(e=>!recent.has(e.pid)).length; return [n,1,n>=1]; }},
   {id:'move30', name:'運動 30 分鐘以上', test:ev=>{ const m=sum((state.exercise[ev.date]||[]).map(e=>e.min)); return [m,30,m>=30]; }, unit:'分'},
   {id:'strength1', name:'做一次肌力訓練', test:ev=>{ const n=(state.exercise[ev.date]||[]).filter(e=>METMAP[e.type]?.[3]).length; return [n,1,n>=1]; }},
-  {id:'water', name:'喝水達標', test:ev=>{ const w=dayStatus(ev.date).water||0; return [w, waterTarget(), w>=waterTarget()]; }, unit:'ml'},
+  {id:'water', name:'喝水達標', test:ev=>{ const w=waterOf(ev.date); return [w, waterTarget(), w>=waterTarget()]; }, unit:'ml'},
   {id:'sleep7', name:'睡滿 7 小時', test:ev=>{ const sl=dayStatus(ev.date).sleep||0; return [sl,7,sl>=7]; }, unit:'小時'},
   {id:'bulk95', name:'熱量達 95% 以上', goals:['bulk'], need:'kcal', test:ev=>[ev.t.kcal, ev.K*.95, ev.t.kcal>=ev.K*.95], unit:'kcal'},
   {id:'cutUnder', name:'熱量不超標', goals:['cut'], need:'kcal', test:ev=>[ev.t.kcal, ev.K, ev.logged&&ev.t.kcal<=ev.K], unit:'kcal'},
@@ -1653,7 +1659,7 @@ function renderExerciseStats(body){
 // ---------- 每日狀態統計 ----------
 function renderStatusStats(body){
   const N=+state.ui.statusRange||30; const days=[]; for(let i=N-1;i>=0;i--) days.push(addDays(currentDate,-i));
-  const WT=waterTarget(); const ds=days.map(d=>dayStatus(d));
+  const WT=waterTarget(); const ds=days.map(d=>({...dayStatus(d), water:waterOf(d)||0}));
   const wDays=ds.filter(x=>x.water).length, wHit=ds.filter(x=>(x.water||0)>=WT).length; const sl=ds.filter(x=>x.sleep); const avgSleep=sl.length?sum(sl.map(x=>x.sleep))/sl.length:0; const md=ds.filter(x=>x.mood); const avgMood=md.length?sum(md.map(x=>x.mood))/md.length:0;
   const W=360,H=120,top=10,bottom=16,bw=Math.max(3,(W-40)/N-2); const x=i=>36+i*((W-40)/N);
   const wMax=Math.max(WT*1.2,...ds.map(x=>x.water||0)); const yw=v=>top+(H-top-bottom)*(1-v/wMax);
@@ -1693,7 +1699,7 @@ new MutationObserver(muts=>{ for(const mu of muts){ const m=mu.target; if(!m.cla
 let editing=null, currentImg=null, imgChanged=false;
 function openModal(p){
   editing=p||null; imgChanged=false; $('modalTitle').textContent=p?'編輯產品':'新增產品'; $('btnDelete').hidden=!p;
-  $('fName').value=p?.name||''; $('fServing').value=p?.serving||'';
+  $('fName').value=p?.name||''; $('fServing').value=p?.serving||''; $('fWater').value=p?.water||'';
   const cats=categories(); $('fCat').innerHTML=`<option value="">未分類</option>${cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}<option value="__new">＋ 自訂分類…</option>`; $('fCat').value=p?.cat&&cats.includes(p.cat)?p.cat:''; $('fCatNew').hidden=true; $('fCatNew').value='';
   for(const n of NUTRIENTS) $('f'+n.key).value=p?.n?.[n.key]??'';
   setImage(p?.img||null); $('modal').classList.add('open'); setTimeout(()=>$('fName').focus(),50);
@@ -1712,7 +1718,7 @@ $('btnSave').onclick=()=>{
   const name=$('fName').value.trim(); if(!name){ toast('請輸入產品名稱',{level:'warn'}); $('fName').focus(); return; }
   const n={}; for(const x of NUTRIENTS){ const v=parseFloat($('f'+x.key).value); n[x.key]=isFinite(v)?v:0; }
   let cat=$('fCat').value; if(cat==='__new') cat=$('fCatNew').value.trim();
-  const data={name, serving:$('fServing').value.trim(), n, img:currentImg, cat}; const was=!!editing;
+  const wv=parseFloat($('fWater').value); const data={name, serving:$('fServing').value.trim(), n, img:currentImg, cat, water:isFinite(wv)&&wv>0?Math.round(wv):0, waterCustom:true}; const was=!!editing;
   if(editing){ Object.assign(editing,data); if(imgChanged) editing.imgCustom=true; } else state.products.push({id:uid(),...data,created:Date.now(),imgCustom:true,fav:false});
   save(); renderProducts(); renderCombos(); renderToday(); closeModal(); toast(was?'已更新產品':'已新增產品');
 };
@@ -1837,7 +1843,7 @@ function exportCSV(mode, days){
   const from=days?addDays(todayStr(),-(days-1)):'0000'; const rows=[];
   if(mode==='detail'){ rows.push(['日期','星期','時間','餐別','產品','每份說明','份數',...NUTRIENTS.map(n=>`${n.label}(${n.unit})`)]); Object.keys(state.logs).filter(d=>d>=from).sort().forEach(d=>state.logs[d].forEach(e=>rows.push([d,WEEK[parseD(d).getDay()],e.t?new Date(e.t).toTimeString().slice(0,5):'',SLOT_NAME[e.slot]||'',e.name,e.serving||'',e.qty,...NUTRIENTS.map(n=>num((e.n[n.key]||0)*e.qty))]))); }
   else if(mode==='ex'){ rows.push(['日期','星期','時間','種類','分鐘','步數','速度km/h','坡度%','手錶kcal','總消耗kcal','淨消耗kcal']); Object.keys(state.exercise).filter(d=>d>=from).sort().forEach(d=>state.exercise[d].forEach(e=>rows.push([d,WEEK[parseD(d).getDay()],e.t?new Date(e.t).toTimeString().slice(0,5):'',exLabelType(e.type),e.min,e.steps||'',e.speed??'',e.grade??'',e.type!=='steps'&&e.kcal?e.kcal:'',exGross(e),exNet(e)]))); }
-  else { rows.push(['日期','星期','項目數','總熱量','目標熱量','差額','蛋白質','脂肪','碳水化合物','飽和脂肪','反式脂肪','糖','鈉','運動分鐘','運動淨消耗','運動回補','飲水ml','睡眠h','睡眠品質','心情','筆記']); const dates=new Set([...Object.keys(state.logs),...Object.keys(state.exercise),...Object.keys(state.daily)].filter(d=>d>=from)); [...dates].sort().forEach(d=>{ const t=dayTotals(d), K=kcalTargetFor(d), es=exDayStats(d); rows.push([d,WEEK[parseD(d).getDay()],(state.logs[d]||[]).length,num(t.kcal),K,num(t.kcal-K),num(t.protein),num(t.fat),num(t.carb),num(t.satfat),num(t.transfat),num(t.sugar),num(t.sodium),es.min,nf(es.net).replace(',',''),T('kcal')?exerciseExtra(d):0,dayStatus(d).water||'',dayStatus(d).sleep||'',dayStatus(d).sleepQ||'',dayStatus(d).mood||'',dayStatus(d).note||'']); }); }
+  else { rows.push(['日期','星期','項目數','總熱量','目標熱量','差額','蛋白質','脂肪','碳水化合物','飽和脂肪','反式脂肪','糖','鈉','運動分鐘','運動淨消耗','運動回補','飲水ml','睡眠h','睡眠品質','心情','筆記']); const dates=new Set([...Object.keys(state.logs),...Object.keys(state.exercise),...Object.keys(state.daily)].filter(d=>d>=from)); [...dates].sort().forEach(d=>{ const t=dayTotals(d), K=kcalTargetFor(d), es=exDayStats(d); rows.push([d,WEEK[parseD(d).getDay()],(state.logs[d]||[]).length,num(t.kcal),K,num(t.kcal-K),num(t.protein),num(t.fat),num(t.carb),num(t.satfat),num(t.transfat),num(t.sugar),num(t.sodium),es.min,nf(es.net).replace(',',''),T('kcal')?exerciseExtra(d):0,waterOf(d)||'',dayStatus(d).sleep||'',dayStatus(d).sleepQ||'',dayStatus(d).mood||'',dayStatus(d).note||'']); }); }
   const csv='﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\r\n'); download(new Blob([csv],{type:'text/csv;charset=utf-8'}),`營養記錄_${{detail:'明細',daily:'彙總',ex:'運動明細'}[mode]}_${days?'近'+days+'天':'全部'}_${todayStr()}.csv`);
   if(!days) markBackup(); toast('已匯出 CSV');
 }
@@ -1879,7 +1885,7 @@ const BADGES=[
   {id:'exercise5',icon:'🏋',name:'動起來',desc:'記錄 5 次運動',prog:()=>[Math.min(5,sum(Object.values(state.exercise).map(l=>l.length))),5]},
   {id:'exercise20',icon:'🏃',name:'運動常客',desc:'記錄 20 次運動',prog:()=>[Math.min(20,sum(Object.values(state.exercise).map(l=>l.length))),20]},
   {id:'strength10',icon:'💪',name:'肌力十次',desc:'完成 10 次肌力訓練',prog:()=>[Math.min(10,sum(Object.values(state.exercise).map(l=>l.filter(e=>METMAP[e.type]?.[3]).length))),10]},
-  {id:'water7',icon:'💧',name:'水分達人',desc:'7 天喝水達標',prog:()=>[Math.min(7,Object.keys(state.daily).filter(d=>(state.daily[d].water||0)>=waterTarget()).length),7]},
+  {id:'water7',icon:'💧',name:'水分達人',desc:'7 天喝水達標',prog:()=>[Math.min(7,[...new Set([...Object.keys(state.daily),...Object.keys(state.logs)])].filter(d=>waterOf(d)>=waterTarget()).length),7]},
   {id:'sleeplog7',icon:'😴',name:'睡眠觀察者',desc:'記錄 7 天睡眠',prog:()=>[Math.min(7,Object.keys(state.daily).filter(d=>state.daily[d].sleep).length),7]},
   {id:'mood14',icon:'🙂',name:'情緒日記',desc:'記錄 14 天心情',prog:()=>[Math.min(14,Object.keys(state.daily).filter(d=>state.daily[d].mood).length),14]},
   {id:'steps100k',icon:'🚶',name:'十萬步',desc:'累計記錄 10 萬步',prog:()=>[Math.min(100000,sum(Object.values(state.exercise).flat().map(e=>e.steps||0))),100000]},
