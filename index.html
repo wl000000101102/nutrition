@@ -245,7 +245,7 @@
   #tip.show{opacity:1}
   #qtyPop{position:fixed;z-index:12;width:230px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:10px;display:none;animation:menuIn .16s ease}
   #qtyPop.open{display:block} #qtyPop .qrow{display:flex;gap:5px;margin-bottom:8px} #qtyPop .qrow .chip{flex:1;justify-content:center;padding:6px 0} #qtyPop input{width:70px;padding:6px 8px;border:1px solid var(--line);border-radius:9px;font:inherit;background:var(--card);color:var(--text)}
-  #qtyPop .qname{font-size:12px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #qtyPop .qname{font-size:12px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #qtyPop .qlbl{font-size:11px;color:var(--muted);margin:2px 0 4px} #qtyPop .qslots .chip{flex-direction:column;gap:0;padding:4px 0;font-size:14px;line-height:1.1} #qtyPop .qslots .chip small{font-size:10px}
   #kbHelp{position:fixed;inset:0;z-index:16;background:rgba(10,20,15,.55);display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)} #kbHelp.open{display:flex}
   #kbHelp .box{background:var(--card);border-radius:16px;padding:18px 22px;box-shadow:var(--shadow-lg);font-size:13.5px;min-width:280px} #kbHelp table{border-collapse:collapse} #kbHelp td{padding:4px 10px 4px 0} kbd{font-family:inherit;font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--card-2)}
   #fx{position:fixed;inset:0;pointer-events:none;z-index:25;display:none}
@@ -951,6 +951,7 @@ function renderProducts(){
       if(suppressClick){ suppressClick=false; return; }
       if(e.target.classList.contains('edit')){ heroOpen(b.querySelector('.thumb'), p); return; }
       if(e.target.classList.contains('fav')){ p.fav=!p.fav; save(); e.target.classList.add('bounce'); setTimeout(renderProducts, 250); return; }
+      if(e.target.classList.contains('plus')){ openQtyPop(p, b); return; }
       addEntry(p, 1, {thumbEl:b.querySelector('.thumb')});
       b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
     });
@@ -994,15 +995,19 @@ $('products').addEventListener('pointermove', e => { if(holdStart && Math.hypot(
 let popTarget=null;
 function openQtyPop(p, card){
   popTarget=p; const pop=$('qtyPop');
+  let popSlot = currentSlot||'l';
   pop.innerHTML = `<div class="qname">${esc(p.name)} · 每份 ${num(p.n.kcal)} kcal</div>
-    <div class="qrow">${[0.5,1,1.5,2,3].map(q=>`<button class="chip" data-q="${q}">${q===0.5?'½':q===1.5?'1½':q} 份</button>`).join('')}</div>
+    <div class="qlbl">加入哪一餐</div><div class="qrow qslots">${SLOTS.map(([k,l])=>`<button class="chip ${popSlot===k?'on':''}" data-s="${k}" title="${l}">${SLOT_ICON[k]}<small>${l}</small></button>`).join('')}</div>
+    <div class="qlbl">份數</div><div class="qrow">${[0.5,1,1.5,2,3].map(q=>`<button class="chip" data-q="${q}">${q===0.5?'½':q===1.5?'1½':q} 份</button>`).join('')}</div>
     <div class="qrow" style="align-items:center"><span style="font-size:12px;color:var(--muted)">自訂</span><input type="number" step="0.25" min="0.25" max="20" value="1.25" inputmode="decimal" id="qCustom"><button class="small primary" id="qAdd">加入</button></div>
     <div class="qrow" style="margin:0"><button class="chip" id="qFav">${p.fav?'★ 取消釘選':'☆ 釘選'}</button><button class="chip" id="qEdit">✎ 編輯</button></div>`;
   pop.classList.add('open');
   const r=card.getBoundingClientRect(); const h=pop.offsetHeight||190; let top=r.bottom+6; if(top+h>innerHeight-8) top=r.top-h-6; pop.style.top=Math.max(8,top)+'px'; pop.style.left=clamp(r.left, 8, innerWidth-238)+'px';
   const thumb = card.querySelector('.thumb');
-  pop.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ addEntry(p,+b.dataset.q,{thumbEl:thumb}); closeQtyPop(); });
-  $('qAdd').onclick=()=>{ let q=parseFloat($('qCustom').value); if(!(q>0&&q<=20)){ toast('請輸入 0.25～20 的份數',{level:'warn'}); return; } q=Math.round(q*4)/4; addEntry(p,q,{thumbEl:thumb}); closeQtyPop(); };
+  pop.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ popSlot=b.dataset.s; pop.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',x.dataset.s===popSlot)); });
+  const go=q=>{ currentSlot=popSlot; addEntry(p,q,{thumbEl:thumb,slot:popSlot}); closeQtyPop(); };
+  pop.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>go(+b.dataset.q));
+  $('qAdd').onclick=()=>{ let q=parseFloat($('qCustom').value); if(!(q>0&&q<=20)){ toast('請輸入 0.25～20 的份數',{level:'warn'}); return; } go(Math.round(q*4)/4); };
   $('qFav').onclick=()=>{ p.fav=!p.fav; save(); renderProducts(); closeQtyPop(); };
   $('qEdit').onclick=()=>{ closeQtyPop(); openModal(p); };
 }
@@ -1062,7 +1067,7 @@ function addEntry(p, qty=1, opts={}){
   const date = currentDate, log = state.logs[date] || (state.logs[date]=[]);
   const restore = opts.silent ? null : snapLogs(date);
   const before = dayTotals(date);
-  const slot = date===todayStr() ? currentSlot : (currentSlot||'l');
+  const slot = opts.slot || (date===todayStr() ? currentSlot : (currentSlot||'l'));
   const ex = log.find(e => e.pid===p.id && e.slot===slot);
   if(ex){ ex.qty = Math.round((ex.qty+qty)*100)/100; ex.times.push(Date.now()); }
   else log.push({id:uid(), pid:p.id, name:p.name, serving:p.serving, n:{...p.n}, water:p.water||0, qty, t:Date.now(), times:[Date.now()], slot});
@@ -1074,7 +1079,7 @@ function addEntry(p, qty=1, opts={}){
   for(const k of ['sodium','sugar','satfat']){ const L=DT[k]; if(!L) continue; const a=before[k]+(p.n[k]||0)*qty; if(before[k]<=L && a>L) warn={k,a,L,lvl:'warn'}; else if(before[k]>L && !warn) warn={k,a,L,lvl:'danger'}; }
   const qtxt = qty===1?'':` ×${qty}`;
   if(warn){ const n=NUT[warn.k]; toast(`已加入${qtxt} · ${n.label}${warn.lvl==='danger'?'已超標，':'將達 '}${nf(warn.a)} ${n.unit}（${Math.round(warn.a/warn.L*100)}%）`, {level:warn.lvl, undo:true}); setTimeout(()=>{ const m=document.querySelector(`.mini[data-k="${warn.k}"]`); if(m){ m.classList.remove('flash'); void m.offsetWidth; m.classList.add('flash'); } }, opts.thumbEl?600:50); }
-  else toast(`已加入：${p.name}${qtxt} · +${nf((p.n.kcal||0)*qty)} kcal`, {undo:true});
+  else toast(`已加入${SLOT_NAME[slot]}：${p.name}${qtxt} · +${nf((p.n.kcal||0)*qty)} kcal`, {undo:true});
   feedback('add');
   if(opts.thumbEl && !RM.matches) fly(opts.thumbEl, p).then(renderToday); else renderToday();
 }
