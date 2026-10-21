@@ -1,5 +1,5 @@
-// 離線快取（版本：20261021-120659）。更新時瀏覽器偵測到此檔有變動就會安裝新版。
-const CACHE='nutri-20261021-120659';
+// 離線快取（版本：20261021-121627）。更新時瀏覽器偵測到此檔有變動就會安裝新版。
+const CACHE='nutri-20261021-121627';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-512-maskable.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
