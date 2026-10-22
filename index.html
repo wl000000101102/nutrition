@@ -560,9 +560,11 @@
     <div class="row3"><label>年齡<input id="pAge" type="number" min="10" max="100" placeholder="30"></label><label>身高 (cm)<input id="pHeight" type="number" min="100" max="250" step="0.1" placeholder="170"></label><label>體重 (kg)<input id="pWeight" type="number" min="30" max="250" step="0.1" placeholder="65"></label></div>
     <div class="row"><label>運動頻率 / 活動量<select id="pAct"><option value="1.2">久坐，幾乎不運動</option><option value="1.375">輕度：每週運動 1–3 天</option><option value="1.55" selected>中度：每週運動 3–5 天</option><option value="1.725">高度：每週運動 6–7 天</option><option value="1.9">極高：體力工作或每天兩練</option></select></label>
     <label>運動回補比例<select id="pEat"><option value="auto">自動（依活動量）</option><option value="0">0%（不回補）</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option></select></label></div>
-    <div class="lbl">目標<div class="segc goal" id="segGoal"><button data-v="cut">減脂<small>熱量 −20%</small></button><button data-v="keep">維持<small>熱量 ±0</small></button><button data-v="bulk">增肌<small>熱量 +12%</small></button></div></div>
+    <div class="lbl">目標<div class="segc goal" id="segGoal"><button data-v="cut">減脂<small>熱量 −20%</small></button><button data-v="keep">維持<small>熱量 ±0</small></button><button data-v="bulk">增肌<small>熱量 +5～15%</small></button></div></div>
+    <div class="lbl" id="bulkRow" hidden>增肌幅度（熱量盈餘）<div class="segc" id="segBulk"><button data-v="5">+5%<small>精實增肌</small></button><button data-v="10">+10%<small>建議</small></button><button data-v="15">+15%<small>快速增重</small></button></div></div>
+    <div class="lbl">脂肪佔熱量比例<div class="segc" id="segFat"><button data-v="25">25%<small>碳水較多</small></button><button data-v="30">30%<small>均衡</small></button><button data-v="35">35%<small>碳水較少</small></button></div></div>
     <div class="calc" id="calc"></div>
-    <div class="hint">基礎代謝率 (BMR) 採 Mifflin-St Jeor 公式；每日總消耗 (TDEE) = BMR × 活動係數。蛋白質依體重（減脂 2.0、增肌 1.8、維持 1.4 g/kg），脂肪佔熱量 25–30%，其餘為碳水。飽和脂肪與糖以熱量 10% 為上限，鈉 2000 mg。記錄運動時，依回補比例把淨消耗加回當日目標。僅供參考，特殊健康狀況請諮詢營養師。</div>
+    <div class="hint">基礎代謝率 (BMR) 採 Mifflin-St Jeor 公式；每日總消耗 (TDEE) = BMR × 活動係數。蛋白質依體重（減脂 2.0、增肌 1.8、維持 1.4 g/kg），脂肪佔熱量 25–35%（可選），其餘為碳水；增肌盈餘可選 +5～15%，建議以每週增重 0.25–0.5 kg 為準，超過就降一檔。飽和脂肪與糖以熱量 10% 為上限，鈉 2000 mg。記錄運動時，依回補比例把淨消耗加回當日目標。僅供參考，特殊健康狀況請諮詢營養師。</div>
   </div>
   <div id="paneManual" class="fields" hidden><div id="targetFields" class="row"></div><div class="hint">直接輸入每日目標。填 0 表示不顯示百分比。<button class="link" id="btnFill">帶入個人資料的計算值</button></div></div>
   <div id="paneData" class="fields" hidden></div>
@@ -707,12 +709,14 @@ function calcProfile(p){
   const bmr = p.sex==='F' ? 10*w+6.25*h-5*a-161 : 10*w+6.25*h-5*a+5;
   const tdeeF = bmr*act;
   const tdee = (state && state.tdeeOverride) ? state.tdeeOverride : tdeeF;
-  let kcal = tdee*g.kcal;
+  const mult = p.goal==='bulk' ? 1+(+p.bulkPct||10)/100 : g.kcal;
+  let kcal = tdee*mult;
   const floor = p.sex==='F'?1200:1500;
   const floored = kcal<floor; if(floored) kcal=floor;
   kcal = Math.round(kcal/10)*10;
   const protein = Math.round(w*g.ppk);
-  const fat = Math.round(kcal*g.fat/9);
+  const fatR = (+p.fatPct>0 ? +p.fatPct : g.fat*100)/100;
+  const fat = Math.round(kcal*fatR/9);
   const carb = Math.max(50, Math.round((kcal-protein*4-fat*9)/4));
   const bmi = w/((h/100)**2);
   return { bmr:Math.round(bmr), tdee:Math.round(tdee), tdeeF:Math.round(tdeeF), bmi:Math.round(bmi*10)/10, floored,
@@ -729,7 +733,7 @@ function normalize(s){
   s.removedDefaults = s.removedDefaults || [];
   s.profile = s.profile || {sex:'M', age:'', height:'', weight:'', activity:'1.55', goal:'keep'};
   s.targetMode = s.targetMode || 'manual';
-  if(!GOALS[s.profile.goal]) s.profile.goal='keep'; if(!['M','F'].includes(s.profile.sex)) s.profile.sex='M'; if(!ACT_LABEL[String(s.profile.activity)]) s.profile.activity='1.55';
+  if(!GOALS[s.profile.goal]) s.profile.goal='keep'; if(!['M','F'].includes(s.profile.sex)) s.profile.sex='M'; if(!ACT_LABEL[String(s.profile.activity)]) s.profile.activity='1.55'; if(![5,10,15].includes(+s.profile.bulkPct)) s.profile.bulkPct=10; if(![25,30,35].includes(+s.profile.fatPct)) s.profile.fatPct=Math.round((GOALS[s.profile.goal]||GOALS.keep).fat*100);
   s.ui = Object.assign({statsTab:'calendar', heatMetric:'kcal', trendRange:30, trendMetric:'kcal', rankRange:7, rankMetric:'servings', balanceRange:30, ringMode:'kcal', radarOpen:false, weightOpen:false, suggestOpen:true, exOpen:true, exRange:30, statusOpen:true, statusRange:30, cat:'all', sort:'usage'}, s.ui||{});
   s.combos = s.combos || []; s.body = s.body || {}; s.exercise = s.exercise || {}; s.daily = s.daily || {};
   if(s.eatBack===undefined) s.eatBack = null; if(s.tdeeOverride===undefined) s.tdeeOverride = null;
@@ -1749,19 +1753,21 @@ $('targetModal').querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTa
 function readDraft(){ draft.age=$('pAge').value; draft.height=$('pHeight').value; draft.weight=$('pWeight').value; draft.activity=$('pAct').value; draft.eat=$('pEat').value; }
 function segSet(id,v){ $(id).querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); }
 $('segSex').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; draft.sex=b.dataset.v; segSet('segSex',draft.sex); renderCalc(); };
-$('segGoal').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; draft.goal=b.dataset.v; segSet('segGoal',draft.goal); renderCalc(); };
+$('segGoal').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; draft.goal=b.dataset.v; segSet('segGoal',draft.goal); $('bulkRow').hidden=draft.goal!=='bulk'; renderCalc(); };
+$('segBulk').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; draft.bulkPct=+b.dataset.v; segSet('segBulk',b.dataset.v); renderCalc(); };
+$('segFat').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; draft.fatPct=+b.dataset.v; segSet('segFat',b.dataset.v); renderCalc(); };
 ['pAge','pHeight','pWeight','pAct','pEat'].forEach(id=>$(id).addEventListener('input',()=>{ readDraft(); renderCalc(); }));
 function renderCalc(){
   const c=calcProfile(draft), box=$('calc'); if(!c){ box.innerHTML=`<div class="hint" style="padding:14px 16px;margin:0">填入年齡、身高、體重後，這裡會即時顯示計算結果。</div>`; return; }
   const t=c.targets, g=GOALS[draft.goal]||GOALS.keep; const pp=t.protein*4/t.kcal*100, fp=t.fat*9/t.kcal*100, cp=Math.max(0,100-pp-fp);
-  box.innerHTML=`<div class="stats"><div class="stat"><div class="l">BMI</div><div class="v">${c.bmi} <small>${bmiLabel(c.bmi)}</small></div></div><div class="stat"><div class="l">基礎代謝 BMR</div><div class="v">${nf(c.bmr)}</div></div><div class="stat"><div class="l">每日消耗 TDEE</div><div class="v">${nf(c.tdee)}${state.tdeeOverride?' <small>實測</small>':''}</div></div><div class="stat"><div class="l">熱量調整</div><div class="v">${g.kcal===1?'±0':(g.kcal>1?'+':'−')+Math.round(Math.abs(g.kcal-1)*100)+'%'}</div></div></div>
+  box.innerHTML=`<div class="stats"><div class="stat"><div class="l">BMI</div><div class="v">${c.bmi} <small>${bmiLabel(c.bmi)}</small></div></div><div class="stat"><div class="l">基礎代謝 BMR</div><div class="v">${nf(c.bmr)}</div></div><div class="stat"><div class="l">每日消耗 TDEE</div><div class="v">${nf(c.tdee)}${state.tdeeOverride?' <small>實測</small>':''}</div></div><div class="stat"><div class="l">熱量調整</div><div class="v">${(()=>{ const m=draft.goal==='bulk'?1+(+draft.bulkPct||10)/100:g.kcal; return m===1?'±0':(m>1?'+':'−')+Math.round(Math.abs(m-1)*100)+'%'; })()}</div></div></div>
     <div class="kcal"><div class="big">${nf(t.kcal)}<small>kcal / 日</small></div><div class="d">${g.label}目標建議熱量。<br>蛋白質 <b>${t.protein} g</b>（${g.ppk} g/kg）· 脂肪 <b>${t.fat} g</b> · 碳水 <b>${t.carb} g</b></div></div>
     <div class="split"><i class="p" style="width:${pp}%"></i><i class="f" style="width:${fp}%"></i><i class="c" style="width:${cp}%"></i></div><div class="legend"><span class="p">蛋白質 <b>${Math.round(pp)}%</b></span><span class="f">脂肪 <b>${Math.round(fp)}%</b></span><span class="c">碳水 <b>${Math.round(cp)}%</b></span></div>${c.floored?`<div class="warn" style="padding:0 16px 12px">已套用最低熱量下限 ${t.kcal} kcal。</div>`:''}`;
 }
 function fillManual(t){ $('targetFields').querySelectorAll('input').forEach(i=>i.value=t[i.dataset.k]??0); }
 function openTargets(){
   Object.assign(draft,state.profile); $('pAge').value=draft.age||''; $('pHeight').value=draft.height||''; $('pWeight').value=draft.weight||''; $('pAct').value=draft.activity||'1.55'; $('pEat').value=state.eatBack===null?'auto':String(state.eatBack);
-  segSet('segSex',draft.sex||'M'); segSet('segGoal',draft.goal||'keep');
+  segSet('segSex',draft.sex||'M'); segSet('segGoal',draft.goal||'keep'); segSet('segBulk',String(draft.bulkPct||10)); segSet('segFat',String(draft.fatPct||30)); $('bulkRow').hidden=(draft.goal||'keep')!=='bulk';
   const box=$('targetFields'); box.innerHTML=''; for(const n of NUTRIENTS){ const l=document.createElement('label'); l.innerHTML=`${n.label} (${n.unit})<input type="number" step="any" min="0" data-k="${n.key}">`; box.appendChild(l); } fillManual(state.targets); renderCalc();
   setTab(state.targetMode==='auto'?'auto':(calcProfile(state.profile)?'manual':'auto')); $('targetModal').classList.add('open');
 }
@@ -1770,8 +1776,8 @@ $('btnFill').onclick=()=>{ readDraft(); const c=calcProfile(draft); if(!c){ toas
 $('btnTargetCancel').onclick=()=>$('targetModal').classList.remove('open');
 $('btnTargetSave').onclick=()=>{
   readDraft(); const oldGoal=goalKey(); state.eatBack=draft.eat==='auto'?null:+draft.eat;
-  if(tab==='auto'){ const c=calcProfile(draft); if(!c){ toast('請完整填入年齡、身高、體重',{level:'warn'}); return; } state.profile={sex:draft.sex||'M',age:draft.age,height:draft.height,weight:draft.weight,activity:draft.activity,goal:draft.goal||'keep'}; state.targetMode='auto'; state.targets=c.targets; toast(`已套用${GOALS[state.profile.goal].label}目標：每日 ${nf(c.targets.kcal)} kcal`); }
-  else { state.profile={...state.profile,sex:draft.sex||state.profile.sex,age:draft.age,height:draft.height,weight:draft.weight,activity:draft.activity,goal:draft.goal||state.profile.goal}; $('targetFields').querySelectorAll('input').forEach(i=>state.targets[i.dataset.k]=parseFloat(i.value)||0); state.targetMode='manual'; toast('已儲存手動目標'); }
+  if(tab==='auto'){ const c=calcProfile(draft); if(!c){ toast('請完整填入年齡、身高、體重',{level:'warn'}); return; } state.profile={sex:draft.sex||'M',age:draft.age,height:draft.height,weight:draft.weight,activity:draft.activity,goal:draft.goal||'keep',bulkPct:+draft.bulkPct||10,fatPct:+draft.fatPct||30}; state.targetMode='auto'; state.targets=c.targets; toast(`已套用${GOALS[state.profile.goal].label}目標：每日 ${nf(c.targets.kcal)} kcal`); }
+  else { state.profile={...state.profile,sex:draft.sex||state.profile.sex,age:draft.age,height:draft.height,weight:draft.weight,activity:draft.activity,goal:draft.goal||state.profile.goal,bulkPct:+draft.bulkPct||state.profile.bulkPct||10,fatPct:+draft.fatPct||state.profile.fatPct||30}; $('targetFields').querySelectorAll('input').forEach(i=>state.targets[i.dataset.k]=parseFloat(i.value)||0); state.targetMode='manual'; toast('已儲存手動目標'); }
   save(); $('targetModal').classList.remove('open');
   const btn=$('segGoal').querySelector('.on'); const r=btn?btn.getBoundingClientRect():null;
   themeReveal(r?r.left+r.width/2:innerWidth/2, r?r.top+r.height/2:innerHeight/2, ()=>{ renderToday(); renderProducts(); }, oldGoal!==goalKey());
@@ -1955,7 +1961,7 @@ const MOBILE = matchMedia('(max-width: 980px)');
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 const STANDALONE = navigator.standalone===true || matchMedia('(display-mode: standalone)').matches;
 const HTTP = /^https?:/.test(location.protocol);
-const APP_VER='20261022-040947';
+const APP_VER='20261022-041404';
 const PAGE_T0=Date.now();
 document.documentElement.classList.toggle('standalone', STANDALONE);
 
@@ -2112,7 +2118,7 @@ const ONB_STEPS=5;
 function needOnboarding(){ return !fx.onboarded && !calcProfile(state.profile); }
 function onbDots(){ $('onbDots').innerHTML=Array.from({length:ONB_STEPS},(_,i)=>`<i class="${i===onb.step?'on':''}"></i>`).join(''); }
 const ACTS=[['1.2','🛋️','久坐','幾乎不運動，辦公室工作'],['1.375','🚶','輕度','每週運動 1–3 天'],['1.55','🏃','中度','每週運動 3–5 天'],['1.725','🏋️','高度','每週運動 6–7 天'],['1.9','🔥','極高','體力工作或每天兩練']];
-const GOALC=[['cut','🔥','減脂','熱量 −20%、蛋白質 2.0 g/kg，保留肌肉慢慢瘦'],['keep','⚖️','維持','熱量 ±0、蛋白質 1.4 g/kg，維持現狀'],['bulk','💪','增肌','熱量 +12%、蛋白質 1.8 g/kg，搭配重訓長肌肉']];
+const GOALC=[['cut','🔥','減脂','熱量 −20%、蛋白質 2.0 g/kg，保留肌肉慢慢瘦'],['keep','⚖️','維持','熱量 ±0、蛋白質 1.4 g/kg，維持現狀'],['bulk','💪','增肌','熱量 +10%（可調 5～15%）、蛋白質 1.8 g/kg，搭配重訓長肌肉']];
 function onbStepHTML(n){
   const d=onb.d;
   if(n===0) return `<div class="onb-card"><h2>歡迎使用 👋</h2><div class="sub">花 1 分鐘回答 3 個問題，就能算出你每天該吃多少熱量與蛋白質。之後隨時可以在「目標」裡修改。</div><div class="onb-feat"><div><span>🍱</span>點一下記錄</div><div><span>🎯</span>自動算目標</div><div><span>📊</span>統計與成就</div></div><div class="onb-actions"><button class="primary" data-go="1">開始設定</button></div></div><button class="onb-skip" id="onbSkip">先略過，直接開始使用</button>`;
